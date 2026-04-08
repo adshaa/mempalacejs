@@ -93,7 +93,7 @@ export class KnowledgeGraph {
     }
 
     const timestampStr = triple.validFrom || new Date().toISOString();
-    const hash = crypto.createHash('md5').update(timestampStr + Date.now().toString()).digest('hex').substring(0, 8);
+    const hash = crypto.randomBytes(4).toString('hex');
     const tripleId = `t_${subId}_${pred}_${objId}_${hash}`;
 
     const stmt = this.db.prepare(`

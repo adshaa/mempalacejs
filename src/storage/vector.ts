@@ -67,12 +67,24 @@ export class VectorStorage {
 
   public async search(
     query: string, 
-    limit: number = 5
+    limit: number = 5,
+    filter?: { wing?: string, room?: string }
   ): Promise<(Drawer & { similarity: number })[]> {
     if (!this.db) await this.init();
     const table = await this.db!.openTable(this.tableName);
     const queryVector = await this.getEmbedding(query);
-    const results = await table.search(queryVector).limit(limit).toArray();
+    
+    let searchBuilder = table.search(queryVector).limit(limit);
+    
+    let whereClauses: string[] = [];
+    if (filter?.wing) whereClauses.push(`wing = '${filter.wing}'`);
+    if (filter?.room) whereClauses.push(`room = '${filter.room}'`);
+
+    if (whereClauses.length > 0) {
+      searchBuilder = searchBuilder.where(whereClauses.join(' AND '));
+    }
+    
+    const results = await searchBuilder.toArray();
 
     return results.map(r => {
       const dist = (r as any)._distance || 0;

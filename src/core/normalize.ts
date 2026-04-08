@@ -25,7 +25,7 @@ export function normalize(filepath: string): string {
 
     return content;
   } catch (e) {
-    throw new Error(\`Could not read \${filepath}: \${e}\`);
+    throw new Error(`Could not read ${filepath}: ${e}`);
   }
 }
 
@@ -285,7 +285,7 @@ function messagesToTranscript(messages: [string, string][]): string {
     
     if (role === 'user') {
       // Skipping spellcheck for now as it relies on an external library in Python
-      lines.push(\`> \${text}\`);
+      lines.push(`> ${text}`);
       
       if (i + 1 < messages.length && messages[i + 1][0] === 'assistant') {
         lines.push(messages[i + 1][1]);
