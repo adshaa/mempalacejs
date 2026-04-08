@@ -14,13 +14,14 @@ import { MemoryStack } from '../core/layers';
 import * as fs from 'fs';
 import * as os from 'os';
 import yaml from 'js-yaml';
+import pkg from '../../package.json';
 
 const program = new Command();
 
 program
   .name('mempalace')
   .description('Give your AI a memory — mine projects and conversations into a searchable palace.')
-  .version('0.0.2-dev');
+  .version(pkg.version);
 
 program
   .command('init')
