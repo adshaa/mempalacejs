@@ -4,15 +4,56 @@ Give your AI a perfect, infinite memory. A local-first, zero-LLM memory system a
 
 This is a **native Node.js / TypeScript port** of the original Python [MemPalace](https://github.com/milla-jovovich/mempalace) architecture, achieving full feature parity and benchmark validation while running seamlessly in JS-native environments.
 
+---
+
+## 🏛️ How it Works
+
+MemPalace organizes information using a spatial metaphor to maximize context efficiency:
+
+```text
+  [ USER AGENT ] <──( MCP )──> [ MEMPALACE ENGINE ]
+                                       │
+      ┌────────────────────────────────┼────────────────────────────────┐
+      │ Layer 0: Identity (Loci)       │ Layer 1: Essential Story (AAAK) │
+      │ "Who am I? What's my role?"    │ "The core project milestones"   │
+      └────────────────────────────────┼────────────────────────────────┘
+                                       │
+      ┌────────────────────────────────┼────────────────────────────────┐
+      │ Layer 2: On-Demand (Rooms)     │ Layer 3: Deep Search (Vector)   │
+      │ "Specific topics (e.g. Auth)"  │ "Semantic match for current Q"  │
+      └────────────────────────────────┼────────────────────────────────┘
+                                       │
+                         [ LanceDB ] [ SQLite ] [ Filesystem ]
+```
+
+- **Wings:** High-level domains (e.g., `wing_projectA`, `wing_personal`).
+- **Rooms:** Topics within a wing (e.g., `room_architecture`, `room_decisions`).
+- **Drawers:** The actual text chunks (vectors) stored in LanceDB.
+- **Tunnels:** Cross-wing connections dynamically built when a Room appears in multiple Wings.
+
+---
+
 ## Features
 
-- **Full Feature Parity:** Includes all 19 tools from the original Python implementation, covering status, taxonomy, semantic search, knowledge graph triples, graph traversal (tunnels/halls), and agent diaries.
-- **Zero-LLM Storage Pipeline:** MemPalace uses fast, pure regex heuristics and the AAAK dialect compressor to chunk, extract entities, map decisions, and file memories *without* relying on expensive or slow LLM API calls.
-- **Embedded Vector Search:** Powered by **LanceDB** and **Transformers.js**. Generates `all-MiniLM-L6-v2` embeddings directly in V8. No Docker containers, no cloud APIs, 100% local and private.
-- **Temporal Knowledge Graph:** Builds a relationship graph using `better-sqlite3`, tracking facts with temporal validity (when things became true or false).
-- **AAAK Dialect:** Uses a compressed, LLM-readable dialect for efficient memory storage. See [DIALECT.md](./DIALECT.md) for the specification.
-- **Native MCP Server:** Exposes a rich suite of tools directly to any client supporting the [Model Context Protocol](https://modelcontextprotocol.io/) (like Claude Desktop and Claude Code).
-- **Benchmark Validated:** Matches the state-of-the-art Python implementation with **96.4% Recall@5** on the LongMemEval benchmark.
+- **Full Feature Parity:** Includes all 19 tools from the original Python implementation.
+- **Zero-LLM Storage Pipeline:** Fast regex heuristics for fact extraction—no API costs.
+- **Blazing Fast Node.js Core:** 2.5x faster ingestion and 10x faster serialization than Python.
+- **Embedded Vector Search:** Powered by **LanceDB** and **Transformers.js** (100% local).
+- **Temporal Knowledge Graph:** Relationship tracking using `better-sqlite3`.
+- **Native MCP Server:** Seamless integration with Claude Desktop and Claude Code.
+
+---
+
+## Documentation
+
+- **[Quick Start Guide](#quick-start)**
+- **[CLI Reference Guide](./docs/CLI_REFERENCE.md)**
+- **[MCP Integration (Claude Setup)](./docs/MCP_INTEGRATION.md)**
+- **[Configuration & Customization](./docs/CONFIGURATION.md)**
+- **[Technical Architecture](./docs/ARCHITECTURE.md)**
+- **[AAAK Dialect Specification](./DIALECT.md)**
+
+---
 
 ## Benchmark Validation
 

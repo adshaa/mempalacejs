@@ -22,7 +22,10 @@
   "type": "commonjs",
   "files": [
     "dist",
-    "hooks"
+    "hooks",
+    "docs",
+    "README.md",
+    "DIALECT.md"
   ],
   "dependencies": {
     "@clack/prompts": "^1.2.0",
