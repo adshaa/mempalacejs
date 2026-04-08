@@ -2,7 +2,7 @@
 
 Give your AI a perfect, infinite memory. A local-first, zero-LLM memory system and Model Context Protocol (MCP) server designed to give AI assistants (like Claude, ChatGPT, and custom agents) a searchable, structured "Memory Palace."
 
-This is a **native Node.js / TypeScript port** of the original Python [MemPalace](https://github.com/aya-thekeeper/mempal) architecture, achieving benchmark parity while running seamlessly in JS-native environments.
+This is a **native Node.js / TypeScript port** of the original Python [MemPalace](https://github.com/milla-jovovich/mempalace) architecture, achieving benchmark parity while running seamlessly in JS-native environments.
 
 ## Features
 
@@ -65,12 +65,14 @@ MemPalace is built to act as a memory backend for AI assistants. To give Claude 
 {
   "mcpServers": {
     "mempalace": {
-      "command": "node",
-      "args": ["/path/to/mempalacejs/dist/index.js", "mcp"]
+      "command": "mempalace",
+      "args": ["mcp"]
     }
   }
 }
 ```
+
+*Note: Ensure you have installed the package globally with `npm install -g mempalacejs` first.*
 
 ## Architecture
 
