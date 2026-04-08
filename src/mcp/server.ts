@@ -5,6 +5,7 @@ import { VectorStorage } from "../storage/vector";
 import { KnowledgeGraph } from "../storage/sqlite";
 import { MempalaceConfig } from "../core/config";
 import { traverseGraph, findTunnels, graphStats } from "../storage/palace_graph";
+import { MemoryStack } from "../core/layers";
 import * as path from 'path';
 import pkg from '../../package.json';
 
@@ -115,6 +116,26 @@ server.tool("mempalace_check_duplicate", {
 server.tool("mempalace_get_aaak_spec", {}, async () => {
   return {
     content: [{ type: "text", text: JSON.stringify({ aaak_spec: AAAK_SPEC }) }]
+  };
+});
+
+server.tool("mempalace_wake_up", { wing: z.string().optional() }, async ({ wing }) => {
+  const stack = new MemoryStack(config, storage);
+  const text = await stack.wakeUp(wing);
+  return {
+    content: [{ type: "text", text }]
+  };
+});
+
+server.tool("mempalace_recall", { 
+  wing: z.string().optional(),
+  room: z.string().optional(),
+  limit: z.number().optional()
+}, async ({ wing, room, limit }) => {
+  const stack = new MemoryStack(config, storage);
+  const text = await stack.recall(wing, room, limit || 10);
+  return {
+    content: [{ type: "text", text }]
   };
 });
 

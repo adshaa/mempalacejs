@@ -20,6 +20,7 @@ export const FOLDER_ROOM_MAP: Record<string, string> = {
   'models': "backend",
   'database': "backend",
   'db': "backend",
+  'auth': "backend",
   'docs': "documentation",
   'doc': "documentation",
   'documentation': "documentation",

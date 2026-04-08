@@ -3,10 +3,11 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import ignore from 'ignore';
 import { VectorStorage } from '../storage/vector';
+import { FOLDER_ROOM_MAP } from './room_detector_constants';
 
 export interface MinerConfig {
   wing: string;
-  rooms: { name: string, keywords: string[] }[];
+  rooms?: { name: string, keywords: string[] }[];
 }
 
 export const READABLE_EXTENSIONS = new Set([
@@ -58,45 +59,38 @@ export function chunkText(content: string): { content: string, chunkIndex: numbe
   return chunks;
 }
 
-export function detectRoom(filepath: string, content: string, rooms: { name: string, keywords: string[] }[], projectPath: string): string {
+export function detectRoom(filepath: string, content: string, rooms: { name: string, keywords: string[] }[] = [], projectPath: string): string {
   const relative = path.relative(projectPath, filepath).toLowerCase();
   const filename = path.parse(filepath).name.toLowerCase();
   const contentLower = content.substring(0, 2000).toLowerCase();
 
-  // Folder priority
+  // 1. Try folder priority from FOLDER_ROOM_MAP
   const parts = relative.split(path.sep);
   for (const part of parts.slice(0, -1)) {
+    if (FOLDER_ROOM_MAP[part]) return FOLDER_ROOM_MAP[part];
+  }
+
+  // 2. Try filename priority from FOLDER_ROOM_MAP
+  for (const [key, room] of Object.entries(FOLDER_ROOM_MAP)) {
+    if (filename.includes(key)) return room;
+  }
+
+  // 3. Try custom rooms if provided
+  if (rooms.length > 0) {
     for (const room of rooms) {
       const candidates = [room.name.toLowerCase(), ...room.keywords.map(k => k.toLowerCase())];
-      if (candidates.some(c => part === c || part.includes(c) || c.includes(part))) {
+      if (candidates.some(c => filename.includes(c))) {
         return room.name;
       }
     }
   }
 
-  // Filename priority
-  for (const room of rooms) {
-    if (filename.includes(room.name.toLowerCase()) || room.name.toLowerCase().includes(filename)) {
-      return room.name;
-    }
-  }
-
-  // Content priority
+  // 4. Content-based keyword scoring (using FOLDER_ROOM_MAP as a base)
   const scores: Record<string, number> = {};
-  for (const room of rooms) {
-    const keywords = [...room.keywords, room.name];
-    let score = 0;
-    for (const kw of keywords) {
-      try {
-          const regex = new RegExp(kw.toLowerCase(), 'g');
-          const matches = contentLower.match(regex);
-          if (matches) score += matches.length;
-      } catch (e) {
-          // ignore invalid regex from keywords
-          if (contentLower.includes(kw.toLowerCase())) score++;
-      }
+  for (const [key, room] of Object.entries(FOLDER_ROOM_MAP)) {
+    if (contentLower.includes(key)) {
+      scores[room] = (scores[room] || 0) + 1;
     }
-    scores[room.name] = score;
   }
 
   const sortedScores = Object.entries(scores).sort((a, b) => b[1] - a[1]);
@@ -153,7 +147,7 @@ export async function mineDirectory(
     const file = files[i];
     try {
       const content = fs.readFileSync(file, 'utf-8');
-      const room = detectRoom(file, content, config.rooms, projectPath);
+      const room = detectRoom(file, content, config.rooms || [], projectPath);
       const chunks = chunkText(content);
 
       for (const chunk of chunks) {

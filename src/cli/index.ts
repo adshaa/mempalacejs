@@ -7,6 +7,9 @@ import * as path from 'path';
 import { runOnboarding } from './onboarding';
 import { runMcpServer } from '../mcp/server';
 import { mineDirectory } from '../core/miner';
+import { mineConversations } from '../core/convo_miner';
+import { spellcheckUserText } from '../core/spellcheck';
+import { TranscriptSplitter } from '../core/transcript_splitter';
 import * as fs from 'fs';
 import yaml from 'js-yaml';
 
@@ -41,10 +44,11 @@ program
       const dbPath = path.join(config.palacePath, 'lancedb');
       const storage = new VectorStorage(dbPath, config.collectionName);
       
-      console.log(`Searching for: "${query}"...`);
+      const cleanQuery = spellcheckUserText(query);
+      console.log(`Searching for: "${cleanQuery}"...`);
       await storage.init();
       
-      const results = await storage.search(query);
+      const results = await storage.search(cleanQuery);
       if (results.length === 0) {
         console.log('No results found.');
         return;
@@ -67,29 +71,69 @@ program
   .description('Mine data from a directory')
   .argument('<dir>', 'Directory to mine')
   .option('--wing <name>', 'Wing name override')
+  .option('--type <type>', 'Type of data: "code" or "convo"', 'code')
   .action(async (dir, options) => {
     const config = new MempalaceConfig();
     const dbPath = path.join(config.palacePath, 'lancedb');
     const storage = new VectorStorage(dbPath, config.collectionName);
     await storage.init();
 
-    const projectDir = path.resolve(dir);
-    let wing = options.wing || path.basename(projectDir);
+    const targetDir = path.resolve(dir);
+    let wing = options.wing || path.basename(targetDir);
     let rooms = [{ name: 'general', keywords: [] }];
 
-    const yamlPath = path.join(projectDir, 'mempalace.yaml');
-    if (fs.existsSync(yamlPath)) {
-      try {
-        const fileContent = fs.readFileSync(yamlPath, 'utf8');
-        const projectConfig = yaml.load(fileContent) as any;
-        if (projectConfig.wing && !options.wing) wing = projectConfig.wing;
-        if (projectConfig.rooms) rooms = projectConfig.rooms;
-      } catch (e: any) {
-        console.warn(`Could not read mempalace.yaml: ${e.message}. Using defaults.`);
+    if (options.type === 'code') {
+      const yamlPath = path.join(targetDir, 'mempalace.yaml');
+      if (fs.existsSync(yamlPath)) {
+        try {
+          const fileContent = fs.readFileSync(yamlPath, 'utf8');
+          const projectConfig = yaml.load(fileContent) as any;
+          if (projectConfig.wing && !options.wing) wing = projectConfig.wing;
+          if (projectConfig.rooms) rooms = projectConfig.rooms;
+        } catch (e: any) {
+          console.warn(`Could not read mempalace.yaml: ${e.message}. Using defaults.`);
+        }
       }
+      await mineDirectory(targetDir, storage, { wing, rooms });
+    } else if (options.type === 'convo') {
+      await mineConversations(targetDir, storage, wing);
+    } else {
+      console.error(`Invalid type: ${options.type}. Use "code" or "convo".`);
     }
+  });
 
-    await mineDirectory(projectDir, storage, { wing, rooms });
+program
+  .command('status')
+  .description('Show palace status and taxonomy')
+  .action(async () => {
+    const config = new MempalaceConfig();
+    const dbPath = path.join(config.palacePath, 'lancedb');
+    const storage = new VectorStorage(dbPath, config.collectionName);
+    await storage.init();
+
+    const taxonomy = await storage.getTaxonomy();
+    console.log(`\nMemPalace Status — ${taxonomy.total} drawers`);
+    console.log(`Palace Path: ${config.palacePath}\n`);
+
+    for (const [wing, count] of Object.entries(taxonomy.wings)) {
+      console.log(`WING: ${wing} (${count} drawers)`);
+    }
+  });
+
+program
+  .command('split')
+  .description('Split large multi-session transcript files')
+  .argument('<file>', 'File to split')
+  .option('--output <dir>', 'Output directory')
+  .action(async (file, options) => {
+    const splitter = new TranscriptSplitter();
+    const results = splitter.splitFile(file, options.output);
+    if (results.length > 0) {
+      console.log(`Successfully split into ${results.length} files:`);
+      results.forEach(f => console.log(`  ✓ ${path.basename(f)}`));
+    } else {
+      console.log('No sessions found to split.');
+    }
   });
 
 program
