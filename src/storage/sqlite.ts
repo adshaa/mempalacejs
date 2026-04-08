@@ -50,7 +50,10 @@ export class KnowledgeGraph {
   }
 
   private entityId(name: string): string {
-    return name.toLowerCase().replace(/ /g, '_').replace(/'/g, '');
+    return name.toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
   }
 
   /**
@@ -211,7 +214,7 @@ export class KnowledgeGraph {
     return results;
   }
 
-  public timeline(entityName?: string): Triple[] {
+  public timeline(entityName?: string, limit: number = 100): Triple[] {
     let query = '';
     const params: any[] = [];
     
@@ -224,9 +227,9 @@ export class KnowledgeGraph {
         JOIN entities o ON t.object = o.id
         WHERE (t.subject = ? OR t.object = ?)
         ORDER BY t.valid_from ASC
-        LIMIT 100
+        LIMIT ?
       `;
-      params.push(eid, eid);
+      params.push(eid, eid, limit);
     } else {
       query = `
         SELECT t.*, s.name as sub_name, o.name as obj_name
@@ -234,8 +237,9 @@ export class KnowledgeGraph {
         JOIN entities s ON t.subject = s.id
         JOIN entities o ON t.object = o.id
         ORDER BY t.valid_from ASC
-        LIMIT 100
+        LIMIT ?
       `;
+      params.push(limit);
     }
 
     const rows = this.db.prepare(query).all(...params) as any[];

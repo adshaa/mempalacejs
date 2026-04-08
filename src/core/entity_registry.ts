@@ -48,6 +48,7 @@ export class EntityRegistry {
         const raw = fs.readFileSync(this.filePath, 'utf-8');
         return JSON.parse(raw);
       } catch (e) {
+        console.error(`Failed to parse entity registry at ${this.filePath}:`, e);
         // Fallback to empty
       }
     }

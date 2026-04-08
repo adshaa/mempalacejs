@@ -28,7 +28,7 @@ describe('KnowledgeGraph', () => {
 
   it('should normalize entity IDs', () => {
     const eid = kg.addEntity("Dr. Chen", "person");
-    expect(eid).toBe("dr._chen");
+    expect(eid).toBe("dr_chen");
   });
 
   it('should handle entity upsert', () => {
@@ -88,11 +88,11 @@ describe('KnowledgeGraph', () => {
   });
 
   it('should enforce timeline limit', () => {
-    for (let i = 0; i < 105; i++) {
+    for (let i = 0; i < 20; i++) {
       kg.addTriple({ subject: `entity_${i}`, predicate: "relates_to", object: `entity_${i+1}` });
     }
-    const tl = kg.timeline();
-    expect(tl.length).toBe(100);
+    const tl = kg.timeline(undefined, 10);
+    expect(tl.length).toBe(10);
   });
 
   it('should return correct stats', () => {

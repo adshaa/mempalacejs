@@ -18,6 +18,14 @@ import pkg from '../../package.json';
 
 const program = new Command();
 
+async function getStorage() {
+  const config = new MempalaceConfig();
+  const dbPath = path.join(config.palacePath, 'lancedb');
+  const storage = new VectorStorage(dbPath, config.collectionName);
+  await storage.init();
+  return { storage, config };
+}
+
 program
   .name('mempalace')
   .description('Give your AI a memory — mine projects and conversations into a searchable palace.')
@@ -43,13 +51,10 @@ program
   .argument('<query>', 'The text to search for')
   .action(async (query: string) => {
     try {
-      const config = new MempalaceConfig();
-      const dbPath = path.join(config.palacePath, 'lancedb');
-      const storage = new VectorStorage(dbPath, config.collectionName);
+      const { storage } = await getStorage();
       
       const cleanQuery = spellcheckUserText(query);
       console.log(`Searching for: "${cleanQuery}"...`);
-      await storage.init();
       
       const results = await storage.search(cleanQuery);
       if (results.length === 0) {
@@ -77,10 +82,7 @@ program
   .option('--wing <name>', 'Wing name override')
   .option('--type <type>', 'Type of data: "code" or "convo"', 'code')
   .action(async (dir, options) => {
-    const config = new MempalaceConfig();
-    const dbPath = path.join(config.palacePath, 'lancedb');
-    const storage = new VectorStorage(dbPath, config.collectionName);
-    await storage.init();
+    const { storage } = await getStorage();
 
     const targetDir = path.resolve(dir);
     let wing = options.wing || path.basename(targetDir);
@@ -112,10 +114,7 @@ program
   .command('status')
   .description('Show palace status and taxonomy')
   .action(async () => {
-    const config = new MempalaceConfig();
-    const dbPath = path.join(config.palacePath, 'lancedb');
-    const storage = new VectorStorage(dbPath, config.collectionName);
-    await storage.init();
+    const { storage, config } = await getStorage();
 
     const taxonomy = await storage.getTaxonomy();
     console.log(`\nMemPalace Status — ${taxonomy.total} drawers`);
@@ -133,10 +132,7 @@ program
   .description('Generate wake-up text for AI (L0 + L1)')
   .option('--wing <name>', 'Wing to focus on')
   .action(async (options) => {
-    const config = new MempalaceConfig();
-    const dbPath = path.join(config.palacePath, 'lancedb');
-    const storage = new VectorStorage(dbPath, config.collectionName);
-    await storage.init();
+    const { storage, config } = await getStorage();
 
     const stack = new MemoryStack(config, storage);
     const text = await stack.wakeUp(options.wing);
@@ -151,10 +147,7 @@ program
   .option('--room <name>', 'Room filter')
   .option('--limit <number>', 'Number of results', '10')
   .action(async (options) => {
-    const config = new MempalaceConfig();
-    const dbPath = path.join(config.palacePath, 'lancedb');
-    const storage = new VectorStorage(dbPath, config.collectionName);
-    await storage.init();
+    const { storage, config } = await getStorage();
 
     const stack = new MemoryStack(config, storage);
     const text = await stack.recall(options.wing, options.room, parseInt(options.limit));

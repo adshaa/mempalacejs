@@ -31,20 +31,18 @@ export class VectorStorage {
 
   private initWorker() {
     // Robust worker path resolution for production (bundled) and development
+    // 1. Check same dir (for bundled dist/storage/index.js)
+    // 2. Check storage/ dir (for bundled dist/index.js)
+    // 3. Check ../storage dir (for bundled dist/cli/index.js)
+    // 4. Check src/storage dir (for development)
     const possiblePaths = [
-      path.join(__dirname, 'embedding_worker.js'),            // Same dir (src/storage or dist/storage)
-      path.join(__dirname, 'storage', 'embedding_worker.js'),   // From dist/index.js
-      path.join(__dirname, '..', 'storage', 'embedding_worker.js'), // From dist/cli/index.js
-      path.join(__dirname, 'embedding_worker.ts'),           // Development src/storage
+      path.join(__dirname, 'embedding_worker.js'),
+      path.join(__dirname, 'storage', 'embedding_worker.js'),
+      path.join(__dirname, '..', 'storage', 'embedding_worker.js'),
+      path.join(__dirname, 'embedding_worker.ts'),
     ];
     
-    let workerPath = '';
-    for (const p of possiblePaths) {
-      if (fs.existsSync(p)) {
-        workerPath = p;
-        break;
-      }
-    }
+    const workerPath = possiblePaths.find(p => fs.existsSync(p));
 
     if (!workerPath) {
       throw new Error(`Could not locate embedding_worker.js in any of: ${possiblePaths.join(', ')}`);
@@ -67,10 +65,9 @@ export class VectorStorage {
       });
 
       this.worker.on('error', (err) => {
-        console.error('Embedding worker error:', err);
-        // Reject all pending
         const error = err instanceof Error ? err : new Error(String(err));
-        for (const [id, pending] of this.pendingRequests.entries()) {
+        console.error('Embedding worker error:', error);
+        for (const pending of this.pendingRequests.values()) {
           pending.reject(error);
         }
         this.pendingRequests.clear();
@@ -191,12 +188,14 @@ export class VectorStorage {
     const results = await searchBuilder.toArray();
 
     return results.map(r => {
+      // LanceDB returns '_distance'. Assuming L2 distance and normalized vectors:
+      // cosine_sim = 1 - (L2^2 / 2)
       const dist = (r as any)._distance || 0;
       const similarity = 1 - (dist * dist) / 2;
       return {
         ...r,
         similarity: parseFloat(similarity.toFixed(3))
-      } as any;
+      } as Drawer & { similarity: number };
     });
   }
 

@@ -6,6 +6,7 @@ import { KnowledgeGraph } from "../storage/sqlite";
 import { MempalaceConfig } from "../core/config";
 import { traverseGraph, findTunnels, graphStats } from "../storage/palace_graph";
 import { MemoryStack } from "../core/layers";
+import { AAAK_SPEC } from "../core/aaak_spec";
 import * as path from 'path';
 import pkg from '../../package.json';
 import fastJson from 'fast-json-stringify';
@@ -45,25 +46,6 @@ async function checkDuplicate(content: string, threshold: number = 0.9): Promise
   }
   return { isDuplicate: false, similarity: results.length > 0 ? results[0].similarity : 0 };
 }
-
-const AAAK_SPEC = `AAAK is a compressed memory dialect that MemPalace uses for efficient storage.
-It is designed to be readable by both humans and LLMs without decoding.
-
-FORMAT:
-  ENTITIES: 3-letter uppercase codes. ALC=Alice, JOR=Jordan, RIL=Riley, MAX=Max, BEN=Ben.
-  EMOTIONS: *action markers* before/during text. *warm*=joy, *fierce*=determined, *raw*=vulnerable, *bloom*=tenderness.
-  STRUCTURE: Pipe-separated fields. FAM: family | PROJ: projects | ⚠: warnings/reminders.
-  DATES: ISO format (2026-03-31). COUNTS: Nx = N mentions (e.g., 570x).
-  IMPORTANCE: ★ to ★★★★★ (1-5 scale).
-  HALLS: hall_facts, hall_events, hall_discoveries, hall_preferences, hall_advice.
-  WINGS: wing_user, wing_agent, wing_team, wing_code, wing_myproject, wing_hardware, wing_ue5, wing_ai_research.
-  ROOMS: Hyphenated slugs representing named ideas (e.g., chromadb-setup, gpu-pricing).
-
-EXAMPLE:
-  FAM: ALC→♡JOR | 2D(kids): RIL(18,sports) MAX(11,chess+swimming) | BEN(contributor)
-
-Read AAAK naturally — expand codes mentally, treat *markers* as emotional context.
-When WRITING AAAK: use entity codes, mark emotions, keep structure tight.`;
 
 // --- READ TOOLS ---
 
@@ -259,9 +241,10 @@ server.tool("mempalace_kg_invalidate", {
 });
 
 server.tool("mempalace_kg_timeline", {
-  entity: z.string().optional()
-}, async ({ entity }) => {
-  const res = kg.timeline(entity);
+  entity: z.string().optional(),
+  limit: z.number().optional()
+}, async ({ entity, limit }) => {
+  const res = kg.timeline(entity, limit || 100);
   return {
     content: [{ type: "text", text: stringifyGeneric(res as any) }]
   };

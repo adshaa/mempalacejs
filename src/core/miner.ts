@@ -116,6 +116,8 @@ export function scanProject(dir: string, respectGitignore: boolean = true): stri
   const files: string[] = [];
   
   const ig = ignore();
+  // Note: This currently only loads the root .gitignore. 
+  // Future improvement: Support nested .gitignore files.
   if (respectGitignore && fs.existsSync(path.join(projectPath, '.gitignore'))) {
       ig.add(fs.readFileSync(path.join(projectPath, '.gitignore'), 'utf-8'));
   }

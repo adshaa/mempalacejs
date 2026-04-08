@@ -64,7 +64,7 @@ export class Layer1 {
         const dialect = new Dialect();
 
         const scored = drawers.map(d => ({
-            importance: Number((d as any).importance || 3),
+            importance: Number(d.importance || 3),
             room: d.room || 'general',
             content: d.content,
             sourceFile: d.sourceFile,
@@ -182,17 +182,7 @@ export class MemoryStack {
         }
 
         yield `## L3 — SEARCH RESULTS for "${query}"`;
-        results.forEach((r, i) => {
-            let snippet = r.content.trim().replace(/\n/g, ' ');
-            if (snippet.length > 300) snippet = snippet.substring(0, 297) + '...';
-            let entry = `\n  [${i + 1}] ${r.wing}/${r.room} (sim=${r.similarity})`;
-            entry += `\n      ${snippet}`;
-            entry += `\n      src: ${path.basename(r.sourceFile)}`;
-            // We can't yield multiple times inside forEach cleanly without making it async, 
-            // but we can just yield the whole entry.
-        });
         
-        // Let's use for...of for clean yielding
         let i = 1;
         for (const r of results) {
             let snippet = r.content.trim().replace(/\n/g, ' ');

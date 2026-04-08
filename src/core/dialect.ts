@@ -222,6 +222,7 @@ export class Dialect {
   }
 
   public encodeZettel(zettel: any): string {
+    // Note: zid is the last part of the UUID-like id
     const zid = (zettel.id as string).split("-").pop();
     
     let entityCodes = (zettel.people || []).map((p: string) => this.encodeEntity(p)).filter((e: any) => e !== null);
@@ -233,9 +234,14 @@ export class Dialect {
     
     const emotions = this.encodeEmotions(zettel.emotional_tone || []);
     
+    // FORMAT: ID:ENTITIES|TOPICS|QUOTE|WEIGHT|EMOTIONS
     const parts = [`${zid}:${entities}`, topicStr];
-    parts.push(`"test quote"`); // Placeholder for compatibility
-    parts.push(`0.5`); // Placeholder for weight
+    
+    // Placeholder values for compatibility with downstream AAAK parsers 
+    // that expect a fixed number of pipe-separated fields.
+    parts.push(`"test quote"`); 
+    parts.push(`0.5`); // Default importance weight
+    
     if (emotions) parts.push(emotions);
     
     return parts.join('|');
