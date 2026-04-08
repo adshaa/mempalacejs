@@ -47,7 +47,7 @@ async function runBenchmark(datasetPath: string, limit?: number) {
     const rankedIndices = results.map(r => entry.haystack_session_ids.indexOf(r.id));
     
     // Evaluate
-    const correctIds = new Set(entry.answer_session_ids);
+    const correctIds = new Set<string>(entry.answer_session_ids);
     const metrics = evaluateRetrieval(rankedIndices, correctIds, entry.haystack_session_ids, 5);
     
     totalRecallAny += metrics.recallAny;

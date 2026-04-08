@@ -1,6 +1,6 @@
 /** Generated from dialect.py */
 
-export const EMOTION_SIGNALS: Record<string, string[]> = {
+export const EMOTION_SIGNALS: Record<string, string> = {
   'decided': "determ",
   'prefer': "convict",
   'worried': "anx",
@@ -24,7 +24,7 @@ export const EMOTION_SIGNALS: Record<string, string[]> = {
   'disappoint': "grief",
   'concern': "anx",
 };
-export const FLAG_SIGNALS: Record<string, string[]> = {
+export const FLAG_SIGNALS: Record<string, string> = {
   'decided': "DECISION",
   'chose': "DECISION",
   'switched': "DECISION",
@@ -195,3 +195,46 @@ export const STOP_WORDS: Set<string> = new Set([
   'you',
   'your',
 ]);
+
+export const EMOTION_CODES: Record<string, string> = {
+  "vulnerability": "vul",
+  "vulnerable": "vul",
+  "joy": "joy",
+  "joyful": "joy",
+  "fear": "fear",
+  "mild_fear": "fear",
+  "trust": "trust",
+  "trust_building": "trust",
+  "grief": "grief",
+  "raw_grief": "grief",
+  "wonder": "wonder",
+  "philosophical_wonder": "wonder",
+  "rage": "rage",
+  "anger": "rage",
+  "love": "love",
+  "devotion": "love",
+  "hope": "hope",
+  "despair": "despair",
+  "hopelessness": "despair",
+  "peace": "peace",
+  "relief": "relief",
+  "humor": "humor",
+  "dark_humor": "humor",
+  "tenderness": "tender",
+  "raw_honesty": "raw",
+  "brutal_honesty": "raw",
+  "self_doubt": "doubt",
+  "anxiety": "anx",
+  "exhaustion": "exhaust",
+  "conviction": "convict",
+  "quiet_passion": "passion",
+  "warmth": "warmth",
+  "curiosity": "curious",
+  "gratitude": "grat",
+  "frustration": "frust",
+  "confusion": "confuse",
+  "satisfaction": "satis",
+  "excitement": "excite",
+  "determination": "determ",
+  "surprise": "surprise",
+};

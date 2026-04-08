@@ -136,4 +136,11 @@ export class VectorStorage {
       await this.db!.dropTable(this.tableName);
     }
   }
+
+  public async deleteDrawer(id: string): Promise<void> {
+    if (!this.db) await this.init();
+    if (!(await this.hasTable())) return;
+    const table = await this.db!.openTable(this.tableName);
+    await table.delete(`id = '${id}'`);
+  }
 }

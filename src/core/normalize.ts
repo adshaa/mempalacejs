@@ -24,7 +24,7 @@ export function normalize(filepath: string): string {
     }
 
     return content;
-  } catch (e) {
+  } catch (e: any) {
     throw new Error(`Could not read ${filepath}: ${e}`);
   }
 }
@@ -198,14 +198,14 @@ function tryChatgptJson(data: any): string | null {
 
     while (currentId && !visited.has(currentId)) {
       visited.add(currentId);
-      const node = mapping[currentId] || {};
+      const node: any = mapping[currentId] || {};
       const msg = node.message;
 
       if (msg) {
         const role = msg.author?.role || '';
         const content = msg.content || {};
         const parts = Array.isArray(content.parts) ? content.parts : [];
-        const text = parts.filter(p => typeof p === 'string' && p).join(' ').trim();
+        const text = parts.filter((p: any) => typeof p === 'string' && p).join(' ').trim();
 
         if (role === 'user' && text) {
           messages.push(['user', text]);
@@ -214,7 +214,7 @@ function tryChatgptJson(data: any): string | null {
         }
       }
 
-      const children = Array.isArray(node.children) ? node.children : [];
+      const children: any[] = Array.isArray(node.children) ? node.children : [];
       currentId = children.length > 0 ? children[0] : null;
     }
   }

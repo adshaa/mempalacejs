@@ -145,24 +145,38 @@ export async function mineDirectory(
 ) {
   const projectPath = path.resolve(dir);
   const files = scanProject(dir);
+  
+  console.log(`\nMining ${files.length} files into wing: ${config.wing}`);
 
-  for (const file of files) {
-    const content = fs.readFileSync(file, 'utf-8');
-    const room = detectRoom(file, content, config.rooms, projectPath);
-    const chunks = chunkText(content);
+  let totalDrawers = 0;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    try {
+      const content = fs.readFileSync(file, 'utf-8');
+      const room = detectRoom(file, content, config.rooms, projectPath);
+      const chunks = chunkText(content);
 
-    for (const chunk of chunks) {
-      const id = `drawer_${config.wing}_${room}_${crypto.createHash('md5').update(file + chunk.chunkIndex).digest('hex').substring(0, 16)}`;
-      await storage.upsertDrawer({
-        id,
-        content: chunk.content,
-        wing: config.wing,
-        room,
-        sourceFile: file,
-        chunkIndex: chunk.chunkIndex,
-        addedBy: agent,
-        filedAt: new Date().toISOString()
-      });
+      for (const chunk of chunks) {
+        const id = `drawer_${config.wing}_${room}_${crypto.createHash('md5').update(file + chunk.chunkIndex).digest('hex').substring(0, 16)}`;
+        await storage.upsertDrawer({
+          id,
+          content: chunk.content,
+          wing: config.wing,
+          room,
+          sourceFile: file,
+          chunkIndex: chunk.chunkIndex,
+          addedBy: agent,
+          filedAt: new Date().toISOString()
+        });
+        totalDrawers++;
+      }
+      
+      if ((i + 1) % 10 === 0 || i === files.length - 1) {
+        process.stdout.write(`\rProcessed ${i + 1}/${files.length} files...`);
+      }
+    } catch (e: any) {
+      console.error(`\nError processing ${file}: ${e.message}`);
     }
   }
+  console.log(`\nDone. Filed ${totalDrawers} drawers.`);
 }

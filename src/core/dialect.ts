@@ -36,13 +36,13 @@ export class Dialect {
   public encodeEmotions(emotions: string[]): string {
     const codes: string[] = [];
     for (const e of emotions) {
-      const code = (EMOTION_CODES as any)[e] || e.substring(0, 4);
+      const code = EMOTION_CODES[e] || e.substring(0, 4);
       if (!codes.includes(code)) codes.push(code);
     }
     return codes.slice(0, 3).join('+');
   }
 
-  public detectEmotions(text: string): string[] {
+  private detectEmotions(text: string): string[] {
     const textLower = text.toLowerCase();
     const detected: string[] = [];
     const seen = new Set<string>();
@@ -56,7 +56,7 @@ export class Dialect {
     return detected.slice(0, 3);
   }
 
-  public detectFlags(text: string): string[] {
+  private detectFlags(text: string): string[] {
     const textLower = text.toLowerCase();
     const detected: string[] = [];
     const seen = new Set<string>();
@@ -70,7 +70,7 @@ export class Dialect {
     return detected.slice(0, 3);
   }
 
-  public extractTopics(text: string, maxTopics: number = 3): string[] {
+  private extractTopics(text: string, maxTopics: number = 3): string[] {
     const words = text.match(/[a-zA-Z][a-zA-Z_-]{2,}/g) || [];
     const freq: Record<string, number> = {};
     
@@ -95,7 +95,7 @@ export class Dialect {
       .map(e => e[0]);
   }
 
-  public extractKeySentence(text: string): string {
+  private extractKeySentence(text: string): string {
     const sentences = text.split(/[.!?\n]+/).map(s => s.trim()).filter(s => s.length > 10);
     if (sentences.length === 0) return "";
     
@@ -123,7 +123,7 @@ export class Dialect {
     return best;
   }
 
-  public detectEntitiesInText(text: string): string[] {
+  private detectEntitiesInText(text: string): string[] {
     const found: string[] = [];
     for (const [name, code] of Object.entries(this.entityCodes)) {
       if (name !== name.toLowerCase() && text.toLowerCase().includes(name.toLowerCase())) {
@@ -222,7 +222,7 @@ export class Dialect {
   }
 
   public encodeZettel(zettel: any): string {
-    const zid = zettel.id.split("-").pop();
+    const zid = (zettel.id as string).split("-").pop();
     
     let entityCodes = (zettel.people || []).map((p: string) => this.encodeEntity(p)).filter((e: any) => e !== null);
     if (entityCodes.length === 0) entityCodes = ["???"];
@@ -242,9 +242,9 @@ export class Dialect {
   }
 
   public encodeTunnel(tunnel: any): string {
-    const fromId = tunnel.from.split("-").pop();
-    const toId = tunnel.to.split("-").pop();
-    const label = tunnel.label || "";
+    const fromId = (tunnel.from as string).split("-").pop();
+    const toId = (tunnel.to as string).split("-").pop();
+    const label = (tunnel.label as string) || "";
     const shortLabel = label.includes(':') ? label.split(':')[0] : label.substring(0, 30);
     return `T:${fromId}<->${toId}|${shortLabel}`;
   }

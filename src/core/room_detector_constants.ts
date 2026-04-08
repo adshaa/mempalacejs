@@ -1,6 +1,6 @@
 /** Generated from room_detector_local.py */
 
-export const FOLDER_ROOM_MAP: Record<string, string[]> = {
+export const FOLDER_ROOM_MAP: Record<string, string> = {
   'frontend': "frontend",
   'front-end': "frontend",
   'front_end': "frontend",

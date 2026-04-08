@@ -6,6 +6,9 @@ import { VectorStorage } from '../storage/vector';
 import * as path from 'path';
 import { runOnboarding } from './onboarding';
 import { runMcpServer } from '../mcp/server';
+import { mineDirectory } from '../core/miner';
+import * as fs from 'fs';
+import yaml from 'js-yaml';
 
 const program = new Command();
 
@@ -63,9 +66,30 @@ program
   .command('mine')
   .description('Mine data from a directory')
   .argument('<dir>', 'Directory to mine')
-  .option('--wing <name>', 'Wing name')
-  .action((dir, options) => {
-    console.log(`Mining ${dir} for wing: ${options.wing || 'default'}`);
+  .option('--wing <name>', 'Wing name override')
+  .action(async (dir, options) => {
+    const config = new MempalaceConfig();
+    const dbPath = path.join(config.palacePath, 'lancedb');
+    const storage = new VectorStorage(dbPath, config.collectionName);
+    await storage.init();
+
+    const projectDir = path.resolve(dir);
+    let wing = options.wing || path.basename(projectDir);
+    let rooms = [{ name: 'general', keywords: [] }];
+
+    const yamlPath = path.join(projectDir, 'mempalace.yaml');
+    if (fs.existsSync(yamlPath)) {
+      try {
+        const fileContent = fs.readFileSync(yamlPath, 'utf8');
+        const projectConfig = yaml.load(fileContent) as any;
+        if (projectConfig.wing && !options.wing) wing = projectConfig.wing;
+        if (projectConfig.rooms) rooms = projectConfig.rooms;
+      } catch (e: any) {
+        console.warn(`Could not read mempalace.yaml: ${e.message}. Using defaults.`);
+      }
+    }
+
+    await mineDirectory(projectDir, storage, { wing, rooms });
   });
 
 program
