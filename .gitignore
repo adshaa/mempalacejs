@@ -6,5 +6,7 @@ venv/
 *.log
 mempalace/
 *.sqlite3
+*.sqlite3-*
 *.db
+benchmarks/data/
 
