@@ -72,48 +72,64 @@ export class KnowledgeGraph {
   }
 
   public addTriple(triple: Triple): string {
-    const subId = this.entityId(triple.subject);
-    const objId = this.entityId(triple.object);
-    const pred = triple.predicate.toLowerCase().replace(/ /g, '_');
+    return this.addTriplesBatch([triple])[0];
+  }
 
-    // Auto-create entities if they don't exist
+  /**
+   * Batch Write Operations (Optimized)
+   */
+  public addTriplesBatch(triples: Triple[]): string[] {
+    const ids: string[] = [];
+    
     const insertEntity = this.db.prepare(`INSERT OR IGNORE INTO entities (id, name) VALUES (?, ?)`);
-    insertEntity.run(subId, triple.subject);
-    insertEntity.run(objId, triple.object);
-
-    // Check for existing identical active triple
     const existingStmt = this.db.prepare(`
       SELECT id FROM triples 
       WHERE subject=? AND predicate=? AND object=? AND valid_to IS NULL
     `);
-    const existing = existingStmt.get(subId, pred, objId) as { id: string } | undefined;
-
-    if (existing) {
-      return existing.id;
-    }
-
-    const timestampStr = triple.validFrom || new Date().toISOString();
-    const hash = crypto.randomBytes(4).toString('hex');
-    const tripleId = `t_${subId}_${pred}_${objId}_${hash}`;
-
-    const stmt = this.db.prepare(`
+    const insertTriple = this.db.prepare(`
       INSERT INTO triples (id, subject, predicate, object, valid_from, valid_to, confidence, source_closet, source_file)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    stmt.run(
-      tripleId,
-      subId,
-      pred,
-      objId,
-      triple.validFrom || null,
-      triple.validTo || null,
-      triple.confidence || 1.0,
-      triple.sourceCloset || null,
-      triple.sourceFile || null
-    );
+    const transaction = this.db.transaction((data: Triple[]) => {
+      for (const triple of data) {
+        const subId = this.entityId(triple.subject);
+        const objId = this.entityId(triple.object);
+        const pred = triple.predicate.toLowerCase().replace(/ /g, '_');
 
-    return tripleId;
+        // 1. Ensure entities exist
+        insertEntity.run(subId, triple.subject);
+        insertEntity.run(objId, triple.object);
+
+        // 2. Check for existing identical active triple
+        const existing = existingStmt.get(subId, pred, objId) as { id: string } | undefined;
+        if (existing) {
+          ids.push(existing.id);
+          continue;
+        }
+
+        // 3. Create new triple
+        const timestampStr = triple.validFrom || new Date().toISOString();
+        const hash = crypto.randomBytes(4).toString('hex');
+        const tripleId = `t_${subId}_${pred}_${objId}_${hash}`;
+
+        insertTriple.run(
+          tripleId,
+          subId,
+          pred,
+          objId,
+          triple.validFrom || null,
+          triple.validTo || null,
+          triple.confidence || 1.0,
+          triple.sourceCloset || null,
+          triple.sourceFile || null
+        );
+        ids.push(tripleId);
+      }
+    });
+
+    transaction(triples);
+    return ids;
   }
 
   public invalidate(subject: string, predicate: string, object: string, ended?: string): void {

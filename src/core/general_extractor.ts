@@ -2,6 +2,7 @@ import {
   DECISION_MARKERS, PREFERENCE_MARKERS, MILESTONE_MARKERS, 
   PROBLEM_MARKERS, EMOTION_MARKERS 
 } from './general_extractor_constants';
+import { normalizeContent } from './normalize';
 
 export interface ExtractedMemory {
   content: string;
@@ -16,7 +17,10 @@ const problemRegex = PROBLEM_MARKERS.map(p => new RegExp(p, 'i'));
 const emotionRegex = EMOTION_MARKERS.map(p => new RegExp(p, 'i'));
 
 export function extractMemories(text: string): ExtractedMemory[] {
-  const chunks = text.split('\n\n').filter(c => c.trim());
+  // Enforce normalization before extraction
+  const cleanText = normalizeContent(text);
+  
+  const chunks = cleanText.split('\n\n').filter(c => c.trim());
   const memories: ExtractedMemory[] = [];
 
   for (let i = 0; i < chunks.length; i++) {

@@ -1,12 +1,16 @@
 import * as lancedb from '@lancedb/lancedb';
-import { pipeline, FeatureExtractionPipeline } from '@xenova/transformers';
+import { Worker } from 'worker_threads';
+import * as path from 'path';
+import * as fs from 'fs';
 import { Drawer } from '../core/types';
 
 export class VectorStorage {
   private dbPath: string;
   private tableName: string;
   private db: lancedb.Connection | null = null;
-  private extractor: FeatureExtractionPipeline | null = null;
+  private worker: Worker | null = null;
+  private pendingRequests: Map<string, { resolve: (val: number[]) => void, reject: (err: Error) => void }> = new Map();
+  private requestIdCounter = 0;
 
   constructor(dbPath: string, tableName: string) {
     this.dbPath = dbPath;
@@ -14,18 +18,68 @@ export class VectorStorage {
   }
 
   public async init() {
-    if (!this.extractor) {
-      this.extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
-    }
     if (!this.db) {
       this.db = await lancedb.connect(this.dbPath);
+    }
+    if (!this.worker) {
+      this.initWorker();
+    }
+  }
+
+  private initWorker() {
+    // Strategy: 
+    // 1. Try dist/storage/embedding_worker.js (Production/Build)
+    // 2. Try src/storage/embedding_worker.ts (Dev with loader)
+    
+    let workerPath = path.join(process.cwd(), 'dist', 'storage', 'embedding_worker.js');
+    
+    if (!fs.existsSync(workerPath)) {
+      // Fallback for development/testing
+      workerPath = path.join(__dirname, 'embedding_worker.js');
+      if (!fs.existsSync(workerPath)) {
+          workerPath = path.join(__dirname, 'embedding_worker.ts');
+      }
+    }
+
+    try {
+      const isTs = workerPath.endsWith('.ts');
+      this.worker = new Worker(workerPath, {
+        execArgv: isTs ? ['--loader', 'ts-node/esm'] : []
+      });
+
+      this.worker.on('message', (msg) => {
+        const { id, embedding, error } = msg;
+        const pending = this.pendingRequests.get(id);
+        if (pending) {
+          if (error) pending.reject(new Error(error));
+          else pending.resolve(embedding);
+          this.pendingRequests.delete(id);
+        }
+      });
+
+      this.worker.on('error', (err) => {
+        console.error('Embedding worker error:', err);
+        // Reject all pending
+        for (const [id, pending] of this.pendingRequests.entries()) {
+          pending.reject(err);
+        }
+        this.pendingRequests.clear();
+        this.worker = null;
+      });
+    } catch (e) {
+      console.error('Failed to initialize embedding worker', e);
+      throw e;
     }
   }
 
   public async getEmbedding(text: string): Promise<number[]> {
-    if (!this.extractor) await this.init();
-    const output = await this.extractor!(text, { pooling: 'mean', normalize: true });
-    return Array.from(output.data);
+    if (!this.worker) this.initWorker();
+    
+    const id = `req_${Date.now()}_${this.requestIdCounter++}`;
+    return new Promise((resolve, reject) => {
+      this.pendingRequests.set(id, { resolve, reject });
+      this.worker!.postMessage({ id, text });
+    });
   }
 
   public async upsertDrawer(drawer: Drawer): Promise<void> {
@@ -164,5 +218,12 @@ export class VectorStorage {
     if (!(await this.hasTable())) return;
     const table = await this.db!.openTable(this.tableName);
     await table.delete(`id = '${id}'`);
+  }
+
+  public async close() {
+    if (this.worker) {
+      await this.worker.terminate();
+      this.worker = null;
+    }
   }
 }

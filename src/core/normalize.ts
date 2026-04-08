@@ -4,29 +4,37 @@ import * as path from 'path';
 export function normalize(filepath: string): string {
   try {
     const content = fs.readFileSync(filepath, 'utf-8');
-    if (!content.trim()) return content;
-
-    const lines = content.split('\n');
-    let quoteCount = 0;
-    for (const line of lines) {
-      if (line.trim().startsWith('>')) quoteCount++;
-    }
-
-    // Already normalized text format
-    if (quoteCount >= 3) {
-      return content;
-    }
-
     const ext = path.extname(filepath).toLowerCase();
-    if (ext === '.json' || ext === '.jsonl' || content.trim().startsWith('{') || content.trim().startsWith('[')) {
-      const normalized = tryNormalizeJson(content);
-      if (normalized) return normalized;
-    }
-
-    return content;
+    return normalizeContent(content, ext);
   } catch (e: any) {
     throw new Error(`Could not read ${filepath}: ${e}`);
   }
+}
+
+export function normalizeContent(content: string, extension?: string): string {
+  if (!content.trim()) return content;
+
+  const lines = content.split('\n');
+  let quoteCount = 0;
+  for (const line of lines) {
+    if (line.trim().startsWith('>')) quoteCount++;
+  }
+
+  // Already normalized text format (heuristic: contains multiple quotes)
+  if (quoteCount >= 3) {
+    return content;
+  }
+
+  // Check for JSON based on extension or content heuristic
+  const isJson = extension === '.json' || extension === '.jsonl' || 
+                 content.trim().startsWith('{') || content.trim().startsWith('[');
+
+  if (isJson) {
+    const normalized = tryNormalizeJson(content);
+    if (normalized) return normalized;
+  }
+
+  return content;
 }
 
 function tryNormalizeJson(content: string): string | null {
@@ -284,7 +292,6 @@ function messagesToTranscript(messages: [string, string][]): string {
     const [role, text] = messages[i];
     
     if (role === 'user') {
-      // Skipping spellcheck for now as it relies on an external library in Python
       lines.push(`> ${text}`);
       
       if (i + 1 < messages.length && messages[i + 1][0] === 'assistant') {

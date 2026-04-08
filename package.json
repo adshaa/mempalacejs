@@ -10,7 +10,7 @@
     "test": "tests"
   },
   "scripts": {
-    "build": "tsup src/cli/index.ts --format cjs --dts --clean",
+    "build": "tsup src/cli/index.ts src/storage/embedding_worker.ts --format cjs --dts --clean",
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest"
