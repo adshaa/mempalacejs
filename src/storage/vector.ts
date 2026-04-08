@@ -129,6 +129,28 @@ export class VectorStorage {
     return await table.query().select(columns).toArray();
   }
 
+  public async listDrawers(
+    limit: number = 10,
+    filter?: { wing?: string, room?: string }
+  ): Promise<Drawer[]> {
+    if (!this.db) await this.init();
+    if (!(await this.hasTable())) return [];
+    const table = await this.db!.openTable(this.tableName);
+    
+    let query = table.query();
+    
+    let whereClauses: string[] = [];
+    if (filter?.wing) whereClauses.push(`wing = '${filter.wing}'`);
+    if (filter?.room) whereClauses.push(`room = '${filter.room}'`);
+
+    if (whereClauses.length > 0) {
+      query = query.where(whereClauses.join(' AND '));
+    }
+    
+    const results = await query.limit(limit).toArray();
+    return results as any[];
+  }
+
   public async clearTable(): Promise<void> {
     if (!this.db) await this.init();
     const tableNames = await this.db!.tableNames();

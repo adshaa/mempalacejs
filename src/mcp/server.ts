@@ -1,11 +1,12 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 import { VectorStorage } from "../storage/vector";
 import { KnowledgeGraph } from "../storage/sqlite";
 import { MempalaceConfig } from "../core/config";
 import { traverseGraph, findTunnels, graphStats } from "../storage/palace_graph";
 import * as path from 'path';
+import pkg from '../../package.json';
 
 const config = new MempalaceConfig();
 const dbPath = path.join(config.palacePath, 'lancedb');
@@ -13,10 +14,10 @@ const kgPath = path.join(config.palacePath, 'knowledge_graph.sqlite3');
 const storage = new VectorStorage(dbPath, config.collectionName);
 const kg = new KnowledgeGraph(kgPath);
 
-const server = new Server(
-  { name: "mempalace", version: "1.0.0" },
-  { capabilities: { tools: {} } }
-);
+const server = new McpServer({
+  name: "mempalace",
+  version: pkg.version
+});
 
 // Helper for exact duplicate checking
 async function checkDuplicate(content: string, threshold: number = 0.9): Promise<{isDuplicate: boolean, similarity: number, id?: string}> {
@@ -46,229 +47,228 @@ EXAMPLE:
 Read AAAK naturally — expand codes mentally, treat *markers* as emotional context.
 When WRITING AAAK: use entity codes, mark emotions, keep structure tight.`;
 
-const tools = [
-  // --- READ TOOLS ---
-  {
-    name: "mempalace_status",
-    description: "Overview of the palace including total drawers and path.",
-    handler: async () => {
-      const tax = await storage.getTaxonomy();
-      return { total_drawers: tax.total, palace_path: config.palacePath };
-    }
-  },
-  {
-    name: "mempalace_list_wings",
-    description: "List all wings and their drawer counts.",
-    handler: async () => ({ wings: (await storage.getTaxonomy()).wings })
-  },
-  {
-    name: "mempalace_list_rooms",
-    description: "List rooms, optionally filtered by wing.",
-    inputSchema: { type: "object", properties: { wing: { type: "string" } } },
-    handler: async (args: any) => {
-      const allRows = await storage.getAllMetadata(['wing', 'room']);
-      const counts: Record<string, number> = {};
-      for (const row of allRows) {
-        if (!args.wing || row.wing === args.wing) {
-          counts[row.room as string] = (counts[row.room as string] || 0) + 1;
-        }
-      }
-      return counts;
-    }
-  },
-  {
-    name: "mempalace_get_taxonomy",
-    description: "Full hierarchical taxonomy of wings and rooms.",
-    handler: async () => {
-      const allRows = await storage.getAllMetadata(['wing', 'room']);
-      const tax: Record<string, Record<string, number>> = {};
-      for (const row of allRows) {
-        const w = row.wing as string;
-        const r = row.room as string;
-        if (!tax[w]) tax[w] = {};
-        tax[w][r] = (tax[w][r] || 0) + 1;
-      }
-      return tax;
-    }
-  },
-  {
-    name: "mempalace_search",
-    description: "Semantic search across the palace. Returns verbatim content.",
-    inputSchema: { 
-      type: "object", 
-      properties: { 
-        query: { type: "string" }, 
-        limit: { type: "number" },
-        wing: { type: "string" },
-        room: { type: "string" }
-      }, 
-      required: ["query"] 
-    },
-    handler: async (args: any) => await storage.search(args.query, args.limit || 5, { wing: args.wing, room: args.room })
-  },
-  {
-    name: "mempalace_check_duplicate",
-    description: "Check if exact content already exists in the palace.",
-    inputSchema: { type: "object", properties: { content: { type: "string" } }, required: ["content"] },
-    handler: async (args: any) => await checkDuplicate(args.content)
-  },
-  {
-    name: "mempalace_get_aaak_spec",
-    description: "Returns the AAAK dialect specification.",
-    handler: async () => ({ spec: AAAK_SPEC })
-  },
+// --- READ TOOLS ---
 
-  // --- GRAPH TOOLS ---
-  {
-    name: "mempalace_traverse_graph",
-    description: "Walk the palace graph from a room to find connected ideas across wings.",
-    inputSchema: { type: "object", properties: { start_room: { type: "string" }, max_hops: { type: "number" } }, required: ["start_room"] },
-    handler: async (args: any) => await traverseGraph(storage, args.start_room, args.max_hops || 2)
-  },
-  {
-    name: "mempalace_find_tunnels",
-    description: "Find rooms that bridge two wings (hallways connecting domains).",
-    inputSchema: { type: "object", properties: { wing_a: { type: "string" }, wing_b: { type: "string" } } },
-    handler: async (args: any) => await findTunnels(storage, args.wing_a, args.wing_b)
-  },
-  {
-    name: "mempalace_graph_stats",
-    description: "Overview of palace graph connectivity.",
-    handler: async () => await graphStats(storage)
-  },
-
-  // --- WRITE TOOLS ---
-  {
-    name: "mempalace_add_drawer",
-    description: "File verbatim content into a wing/room.",
-    inputSchema: { 
-      type: "object", 
-      properties: { 
-        wing: { type: "string" }, 
-        room: { type: "string" }, 
-        content: { type: "string" } 
-      }, 
-      required: ["wing", "room", "content"] 
-    },
-    handler: async (args: any) => {
-      const dup = await checkDuplicate(args.content);
-      if (dup.isDuplicate) return { status: "skipped", message: "Duplicate content", existingId: dup.id };
-
-      const id = `drawer_${args.wing}_${args.room}_${Date.now()}`;
-      await storage.upsertDrawer({
-        id,
-        content: args.content,
-        wing: args.wing,
-        room: args.room,
-        sourceFile: 'mcp',
-        chunkIndex: 0,
-        addedBy: 'mcp',
-        filedAt: new Date().toISOString()
-      });
-      return { status: "added", id };
-    }
-  },
-  {
-    name: "mempalace_delete_drawer",
-    description: "Delete a specific drawer by ID.",
-    inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
-    handler: async (args: any) => {
-      await storage.deleteDrawer(args.id);
-      return { status: "deleted", id: args.id };
-    }
-  },
-
-  // --- KNOWLEDGE GRAPH TOOLS ---
-  {
-    name: "mempalace_kg_query",
-    description: "Query the knowledge graph for an entity's relationships.",
-    inputSchema: { type: "object", properties: { entity: { type: "string" }, direction: { type: "string" } }, required: ["entity"] },
-    handler: async (args: any) => kg.queryEntity(args.entity, undefined, args.direction || 'both')
-  },
-  {
-    name: "mempalace_kg_add",
-    description: "Add a relationship triple to the knowledge graph.",
-    inputSchema: { type: "object", properties: { subject: { type: "string" }, predicate: { type: "string" }, object: { type: "string" } }, required: ["subject", "predicate", "object"] },
-    handler: async (args: any) => {
-      const id = kg.addTriple({ subject: args.subject, predicate: args.predicate, object: args.object });
-      return { status: "added", id };
-    }
-  },
-  {
-    name: "mempalace_kg_invalidate",
-    description: "Mark a fact as no longer true (set end date).",
-    inputSchema: { type: "object", properties: { subject: { type: "string" }, predicate: { type: "string" }, object: { type: "string" } }, required: ["subject", "predicate", "object"] },
-    handler: async (args: any) => {
-      kg.invalidate(args.subject, args.predicate, args.object);
-      return { status: "invalidated" };
-    }
-  },
-  {
-    name: "mempalace_kg_timeline",
-    description: "Get chronological timeline of facts.",
-    inputSchema: { type: "object", properties: { entity: { type: "string" } } },
-    handler: async (args: any) => kg.timeline(args.entity)
-  },
-  {
-    name: "mempalace_kg_stats",
-    description: "Knowledge graph overview.",
-    handler: async () => kg.stats()
-  },
-
-  // --- DIARY TOOLS ---
-  {
-    name: "mempalace_diary_write",
-    description: "Write an agent diary entry.",
-    inputSchema: { type: "object", properties: { agent_name: { type: "string" }, entry: { type: "string" }, topic: { type: "string" } }, required: ["agent_name", "entry"] },
-    handler: async (args: any) => {
-      const wing = `agent_${args.agent_name.toLowerCase()}`;
-      const id = `diary_${Date.now()}`;
-      await storage.upsertDrawer({
-        id,
-        content: args.entry,
-        wing,
-        room: 'diary',
-        topic: args.topic || 'general',
-        sourceFile: 'diary',
-        chunkIndex: 0,
-        addedBy: args.agent_name,
-        filedAt: new Date().toISOString()
-      });
-      return { status: "written", id };
-    }
-  },
-  {
-    name: "mempalace_diary_read",
-    description: "Read an agent's recent diary entries.",
-    inputSchema: { type: "object", properties: { agent_name: { type: "string" }, limit: { type: "number" } }, required: ["agent_name"] },
-    handler: async (args: any) => {
-      const limit = args.limit || 10;
-      const wing = `agent_${args.agent_name.toLowerCase()}`;
-      // In LanceDB we just search generically but filter by wing and room.
-      // Hack: we search for a common word or just pull metadata
-      const results = await storage.search("", limit, { wing, room: 'diary' });
-      return results;
-    }
-  }
-];
-
-server.setRequestHandler(ListToolsRequestSchema, async () => {
+server.tool("mempalace_status", {}, async () => {
+  const tax = await storage.getTaxonomy();
   return {
-    tools: tools.map(t => ({
-      name: t.name,
-      description: t.description,
-      inputSchema: t.inputSchema || { type: "object", properties: {} }
-    }))
+    content: [{ type: "text", text: JSON.stringify({ total_drawers: tax.total, palace_path: config.palacePath }) }]
   };
 });
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const tool = tools.find(t => t.name === request.params.name);
-  if (!tool) throw new Error(`Tool not found: ${request.params.name}`);
-  
-  const results = await tool.handler(request.params.arguments);
+server.tool("mempalace_list_wings", {}, async () => {
+  const tax = await storage.getTaxonomy();
   return {
-    content: [{ type: "text", text: JSON.stringify(results) }],
+    content: [{ type: "text", text: JSON.stringify({ wings: tax.wings }) }]
+  };
+});
+
+server.tool("mempalace_list_rooms", { wing: z.string().optional() }, async ({ wing }) => {
+  const allRows = await storage.getAllMetadata(['wing', 'room']);
+  const counts: Record<string, number> = {};
+  for (const row of allRows) {
+    if (!wing || row.wing === wing) {
+      counts[row.room as string] = (counts[row.room as string] || 0) + 1;
+    }
+  }
+  return {
+    content: [{ type: "text", text: JSON.stringify(counts) }]
+  };
+});
+
+server.tool("mempalace_get_taxonomy", {}, async () => {
+  const allRows = await storage.getAllMetadata(['wing', 'room']);
+  const tax: Record<string, Record<string, number>> = {};
+  for (const row of allRows) {
+    const w = row.wing as string;
+    const r = row.room as string;
+    if (!tax[w]) tax[w] = {};
+    tax[w][r] = (tax[w][r] || 0) + 1;
+  }
+  return {
+    content: [{ type: "text", text: JSON.stringify(tax) }]
+  };
+});
+
+server.tool("mempalace_search", {
+  query: z.string(),
+  limit: z.number().optional(),
+  wing: z.string().optional(),
+  room: z.string().optional()
+}, async ({ query, limit, wing, room }) => {
+  const results = await storage.search(query, limit || 5, { wing, room });
+  return {
+    content: [{ type: "text", text: JSON.stringify(results) }]
+  };
+});
+
+server.tool("mempalace_check_duplicate", {
+  content: z.string(),
+  threshold: z.number().optional()
+}, async ({ content, threshold }) => {
+  const dup = await checkDuplicate(content, threshold);
+  return {
+    content: [{ type: "text", text: JSON.stringify(dup) }]
+  };
+});
+
+server.tool("mempalace_get_aaak_spec", {}, async () => {
+  return {
+    content: [{ type: "text", text: JSON.stringify({ aaak_spec: AAAK_SPEC }) }]
+  };
+});
+
+// --- GRAPH TOOLS ---
+
+server.tool("mempalace_traverse_graph", {
+  start_room: z.string(),
+  max_hops: z.number().optional()
+}, async ({ start_room, max_hops }) => {
+  const res = await traverseGraph(storage, start_room, max_hops || 2);
+  return {
+    content: [{ type: "text", text: JSON.stringify(res) }]
+  };
+});
+
+server.tool("mempalace_find_tunnels", {
+  wing_a: z.string().optional(),
+  wing_b: z.string().optional()
+}, async ({ wing_a, wing_b }) => {
+  const res = await findTunnels(storage, wing_a, wing_b);
+  return {
+    content: [{ type: "text", text: JSON.stringify(res) }]
+  };
+});
+
+server.tool("mempalace_graph_stats", {}, async () => {
+  const res = await graphStats(storage);
+  return {
+    content: [{ type: "text", text: JSON.stringify(res) }]
+  };
+});
+
+// --- WRITE TOOLS ---
+
+server.tool("mempalace_add_drawer", {
+  wing: z.string(),
+  room: z.string(),
+  content: z.string()
+}, async (args) => {
+  const dup = await checkDuplicate(args.content);
+  if (dup.isDuplicate) {
+    return {
+      content: [{ type: "text", text: JSON.stringify({ status: "skipped", message: "Duplicate content", existingId: dup.id }) }]
+    };
+  }
+
+  const id = `drawer_${args.wing}_${args.room}_${Date.now()}`;
+  await storage.upsertDrawer({
+    id,
+    content: args.content,
+    wing: args.wing,
+    room: args.room,
+    sourceFile: 'mcp',
+    chunkIndex: 0,
+    addedBy: 'mcp',
+    filedAt: new Date().toISOString()
+  });
+  return {
+    content: [{ type: "text", text: JSON.stringify({ status: "added", id }) }]
+  };
+});
+
+server.tool("mempalace_delete_drawer", {
+  id: z.string()
+}, async ({ id }) => {
+  await storage.deleteDrawer(id);
+  return {
+    content: [{ type: "text", text: JSON.stringify({ status: "deleted", id }) }]
+  };
+});
+
+// --- KNOWLEDGE GRAPH TOOLS ---
+
+server.tool("mempalace_kg_query", {
+  entity: z.string(),
+  direction: z.enum(["incoming", "outgoing", "both"]).optional()
+}, async ({ entity, direction }) => {
+  const res = await kg.queryEntity(entity, undefined, direction || 'both');
+  return {
+    content: [{ type: "text", text: JSON.stringify(res) }]
+  };
+});
+
+server.tool("mempalace_kg_add", {
+  subject: z.string(),
+  predicate: z.string(),
+  object: z.string()
+}, async ({ subject, predicate, object }) => {
+  const id = kg.addTriple({ subject, predicate, object });
+  return {
+    content: [{ type: "text", text: JSON.stringify({ status: "added", id }) }]
+  };
+});
+
+server.tool("mempalace_kg_invalidate", {
+  subject: z.string(),
+  predicate: z.string(),
+  object: z.string()
+}, async ({ subject, predicate, object }) => {
+  kg.invalidate(subject, predicate, object);
+  return {
+    content: [{ type: "text", text: JSON.stringify({ status: "invalidated" }) }]
+  };
+});
+
+server.tool("mempalace_kg_timeline", {
+  entity: z.string().optional()
+}, async ({ entity }) => {
+  const res = kg.timeline(entity);
+  return {
+    content: [{ type: "text", text: JSON.stringify(res) }]
+  };
+});
+
+server.tool("mempalace_kg_stats", {}, async () => {
+  const res = kg.stats();
+  return {
+    content: [{ type: "text", text: JSON.stringify(res) }]
+  };
+});
+
+// --- DIARY TOOLS ---
+
+server.tool("mempalace_diary_write", {
+  agent_name: z.string(),
+  entry: z.string(),
+  topic: z.string().optional()
+}, async ({ agent_name, entry, topic }) => {
+  const wing = `agent_${agent_name.toLowerCase()}`;
+  const id = `diary_${Date.now()}`;
+  await storage.upsertDrawer({
+    id,
+    content: entry,
+    wing,
+    room: 'diary',
+    topic: topic || 'general',
+    sourceFile: 'diary',
+    chunkIndex: 0,
+    addedBy: agent_name,
+    filedAt: new Date().toISOString()
+  });
+  return {
+    content: [{ type: "text", text: JSON.stringify({ status: "written", id }) }]
+  };
+});
+
+server.tool("mempalace_diary_read", {
+  agent_name: z.string(),
+  limit: z.number().optional()
+}, async ({ agent_name, limit }) => {
+  const wing = `agent_${agent_name.toLowerCase()}`;
+  const results = await storage.listDrawers(limit || 10, { wing, room: 'diary' });
+  return {
+    content: [{ type: "text", text: JSON.stringify(results) }]
   };
 });
 
