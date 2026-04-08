@@ -2,6 +2,8 @@
  * MemPalace Core Interfaces
  */
 
+export type EntityType = 'person' | 'project' | 'place' | 'concept' | 'unknown';
+
 /**
  * Represents a Drawer in the Palace (a raw chunk of text).
  * Stored in the Vector Database (LanceDB).

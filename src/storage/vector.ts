@@ -60,8 +60,9 @@ export class VectorStorage {
       this.worker.on('error', (err) => {
         console.error('Embedding worker error:', err);
         // Reject all pending
+        const error = err instanceof Error ? err : new Error(String(err));
         for (const [id, pending] of this.pendingRequests.entries()) {
-          pending.reject(err);
+          pending.reject(error);
         }
         this.pendingRequests.clear();
         this.worker = null;

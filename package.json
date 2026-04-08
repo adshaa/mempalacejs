@@ -1,19 +1,20 @@
 {
   "name": "mempalacejs",
-  "version": "0.0.1",
-  "description": "",
+  "version": "0.1.0",
+  "description": "Local-first AI memory system and MCP server",
   "main": "dist/index.js",
   "bin": {
-    "mempalace": "./dist/index.js"
+    "mempalace": "./dist/cli/index.js"
   },
   "directories": {
     "test": "tests"
   },
   "scripts": {
-    "build": "tsup src/cli/index.ts src/storage/embedding_worker.ts --format cjs --dts --clean",
-    "start": "node dist/index.js",
+    "build": "tsup src/index.ts src/cli/index.ts src/storage/embedding_worker.ts --format cjs --dts --clean",
+    "start": "node dist/cli/index.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [],
   "author": "",

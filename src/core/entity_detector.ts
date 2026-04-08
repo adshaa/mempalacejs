@@ -4,8 +4,7 @@ import {
   STOPWORDS 
 } from './entity_detector_constants';
 import { EntityRegistry } from './entity_registry';
-
-export type EntityType = 'person' | 'project' | 'unknown';
+import { EntityType } from './types';
 
 export interface EntityCandidate {
   name: string;

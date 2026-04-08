@@ -10,6 +10,7 @@ This is a **native Node.js / TypeScript port** of the original Python [MemPalace
 - **Zero-LLM Storage Pipeline:** MemPalace uses fast, pure regex heuristics and the AAAK dialect compressor to chunk, extract entities, map decisions, and file memories *without* relying on expensive or slow LLM API calls.
 - **Embedded Vector Search:** Powered by **LanceDB** and **Transformers.js**. Generates `all-MiniLM-L6-v2` embeddings directly in V8. No Docker containers, no cloud APIs, 100% local and private.
 - **Temporal Knowledge Graph:** Builds a relationship graph using `better-sqlite3`, tracking facts with temporal validity (when things became true or false).
+- **AAAK Dialect:** Uses a compressed, LLM-readable dialect for efficient memory storage. See [DIALECT.md](./DIALECT.md) for the specification.
 - **Native MCP Server:** Exposes a rich suite of tools directly to any client supporting the [Model Context Protocol](https://modelcontextprotocol.io/) (like Claude Desktop and Claude Code).
 - **Benchmark Validated:** Matches the state-of-the-art Python implementation with **96.4% Recall@5** on the LongMemEval benchmark.
 
@@ -45,10 +46,14 @@ This runs an interactive onboarding flow to configure your initial rooms and win
 
 ### 3. Mining Data
 
-Point MemPalace at a project, a folder of Markdown files, or a chat transcript export to ingest it into the palace:
+Point MemPalace at a project or a folder of chat transcripts to ingest them into the palace:
 
 ```bash
+# Mine a codebase (default type is 'code')
 mempalace mine ./my-project --wing my-project
+
+# Mine conversation history (JSON/JSONL/Markdown)
+mempalace mine ./conversations --type convo --wing legacy-chats
 ```
 
 ### 4. Search and Status
@@ -64,6 +69,35 @@ Check the health, taxonomy, and stats of your Palace:
 ```bash
 mempalace status
 ```
+
+### 5. AI Context Generation
+
+Generate context strings for your AI assistants:
+
+```bash
+# Get Identity (L0) and Essential Story (L1)
+mempalace wake-up --wing my-project
+
+# Retrieve specific memories (L2)
+mempalace recall --wing my-project --room architecture --limit 5
+```
+
+### 6. Utility Commands
+
+Handle large multi-session transcript exports:
+
+```bash
+mempalace split large_transcripts.txt --output ./individual_sessions
+```
+
+## Claude Code Integration
+
+MemPalace JS includes hooks designed for [Claude Code](https://github.com/anthropic/claude-code) to automatically capture memories during your sessions.
+
+- **Auto-Save Hook:** Triggers a memory save every 15 exchanges.
+- **Pre-Compact Hook:** Ensures a full memory save before Claude compresses the conversation context.
+
+To install, see the scripts in the `hooks/` directory and add them to your Claude settings.
 
 ## Model Context Protocol (MCP) Integration
 

@@ -2,8 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { COMMON_ENGLISH_WORDS, PERSON_VERB_PATTERNS } from './entity_detector_constants';
-
-export type EntityType = 'person' | 'project' | 'place' | 'concept' | 'unknown';
+import { EntityType } from './types';
 
 export interface RegistryEntity {
   name: string;
