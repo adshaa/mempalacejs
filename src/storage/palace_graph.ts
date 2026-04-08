@@ -103,7 +103,7 @@ export async function traverseGraph(storage: VectorStorage, startRoom: string, m
 
   if (!nodes[startRoom]) {
     return {
-      error: \`Room '\${startRoom}' not found\`,
+      error: `Room '${startRoom}' not found`,
       suggestions: fuzzyMatch(startRoom, nodes)
     };
   }
