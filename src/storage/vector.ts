@@ -86,6 +86,10 @@ export class VectorStorage {
 
   public async getTaxonomy(): Promise<{ wings: Record<string, number>, rooms: Record<string, number>, total: number }> {
     if (!this.db) await this.init();
+    if (!(await this.hasTable())) {
+      return { wings: {}, rooms: {}, total: 0 };
+    }
+
     const table = await this.db!.openTable(this.tableName);
     const rows = await table.query().select(['wing', 'room']).toArray();
     

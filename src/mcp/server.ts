@@ -86,6 +86,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   };
 });
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
-console.error("MemPalace MCP server running on stdio");
+export async function runMcpServer() {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error("MemPalace MCP server running on stdio");
+}

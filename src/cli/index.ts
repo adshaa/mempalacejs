@@ -5,6 +5,7 @@ import { MempalaceConfig } from '../core/config';
 import { VectorStorage } from '../storage/vector';
 import * as path from 'path';
 import { runOnboarding } from './onboarding';
+import { runMcpServer } from '../mcp/server';
 
 const program = new Command();
 
@@ -65,6 +66,13 @@ program
   .option('--wing <name>', 'Wing name')
   .action((dir, options) => {
     console.log(`Mining ${dir} for wing: ${options.wing || 'default'}`);
+  });
+
+program
+  .command('mcp')
+  .description('Run the MemPalace MCP server via stdio')
+  .action(async () => {
+    await runMcpServer();
   });
 
 program.parse(process.argv);
