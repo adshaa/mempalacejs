@@ -56,6 +56,8 @@ async function runBenchmark(datasetPath: string, limit?: number) {
 
   console.log(`Recall@5: ${(totalRecallAny / questions.length).toFixed(3)}`);
   console.log(`NDCG@5: ${(totalNDCG / questions.length).toFixed(3)}`);
+
+  await storage.close();
 }
 
 // Update command line argument handling

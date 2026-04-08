@@ -3,6 +3,7 @@ import {
   PROJECT_VERB_PATTERNS, 
   STOPWORDS 
 } from './entity_detector_constants';
+import { EntityRegistry } from './entity_registry';
 
 export type EntityType = 'person' | 'project' | 'unknown';
 
@@ -11,6 +12,8 @@ export interface EntityCandidate {
   type: EntityType;
   score: number;
 }
+
+const registry = new EntityRegistry();
 
 // Optimization: Pre-compile regexes for protection/scoring
 // We replace {name} with a capture group for the candidate
@@ -28,6 +31,13 @@ export function detectEntities(content: string): Map<string, number> {
     if (name.length < 3) continue;
     
     const lower = name.toLowerCase();
+
+    // Check Registry First
+    const registered = registry.lookup(name, content);
+    if (registered.type !== 'unknown' && registered.type !== 'concept') {
+        candidates.set(name, (candidates.get(name) || 0) + 1);
+        continue;
+    }
     
     // If it's a stopword, check for protection before skipping
     if (STOPWORDS.has(lower)) {

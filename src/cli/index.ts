@@ -10,6 +10,7 @@ import { mineDirectory } from '../core/miner';
 import { mineConversations } from '../core/convo_miner';
 import { spellcheckUserText } from '../core/spellcheck';
 import { TranscriptSplitter } from '../core/transcript_splitter';
+import { MemoryStack } from '../core/layers';
 import * as fs from 'fs';
 import yaml from 'js-yaml';
 
@@ -61,6 +62,7 @@ program
         console.log('─'.repeat(40));
       });
       
+      await storage.close();
     } catch (e) {
       console.error('Error during search:', e);
     }
@@ -100,6 +102,8 @@ program
     } else {
       console.error(`Invalid type: ${options.type}. Use "code" or "convo".`);
     }
+
+    await storage.close();
   });
 
 program
@@ -118,6 +122,42 @@ program
     for (const [wing, count] of Object.entries(taxonomy.wings)) {
       console.log(`WING: ${wing} (${count} drawers)`);
     }
+
+    await storage.close();
+  });
+
+program
+  .command('wake-up')
+  .description('Generate wake-up text for AI (L0 + L1)')
+  .option('--wing <name>', 'Wing to focus on')
+  .action(async (options) => {
+    const config = new MempalaceConfig();
+    const dbPath = path.join(config.palacePath, 'lancedb');
+    const storage = new VectorStorage(dbPath, config.collectionName);
+    await storage.init();
+
+    const stack = new MemoryStack(config, storage);
+    const text = await stack.wakeUp(options.wing);
+    console.log(text);
+    await storage.close();
+  });
+
+program
+  .command('recall')
+  .description('On-demand L2 retrieval')
+  .option('--wing <name>', 'Wing filter')
+  .option('--room <name>', 'Room filter')
+  .option('--limit <number>', 'Number of results', '10')
+  .action(async (options) => {
+    const config = new MempalaceConfig();
+    const dbPath = path.join(config.palacePath, 'lancedb');
+    const storage = new VectorStorage(dbPath, config.collectionName);
+    await storage.init();
+
+    const stack = new MemoryStack(config, storage);
+    const text = await stack.recall(options.wing, options.room, parseInt(options.limit));
+    console.log(text);
+    await storage.close();
   });
 
 program

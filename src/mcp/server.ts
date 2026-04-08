@@ -295,6 +295,16 @@ server.tool("mempalace_diary_read", {
 
 export async function runMcpServer() {
   const transport = new StdioServerTransport();
+  
+  // Cleanup on exit
+  const cleanup = async () => {
+    await storage.close();
+    process.exit(0);
+  };
+
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+
   await server.connect(transport);
   console.error("MemPalace MCP server running on stdio");
 }

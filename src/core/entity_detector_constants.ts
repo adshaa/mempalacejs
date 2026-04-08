@@ -57,6 +57,15 @@ export const PROJECT_VERB_PATTERNS: string[] = [
   '\\bimport\\s+{name}\\b',
   '\\bpip\\s+install\\s+{name}\\b',
 ];
+export const COMMON_ENGLISH_WORDS: Set<string> = new Set([
+  "ever", "grace", "will", "bill", "mark", "april", "may", "june", "joy", "hope",
+  "faith", "chance", "chase", "hunter", "dash", "flash", "star", "sky", "river",
+  "brook", "lane", "art", "clay", "gil", "nat", "max", "rex", "ray", "jay", "rose",
+  "violet", "lily", "ivy", "ash", "reed", "sage", "monday", "tuesday", "wednesday",
+  "thursday", "friday", "saturday", "sunday", "january", "february", "march",
+  "july", "august", "september", "october", "november", "december"
+]);
+
 export const STOPWORDS: Set<string> = new Set([
   'a',
   'about',
