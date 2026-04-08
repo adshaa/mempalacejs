@@ -12,6 +12,7 @@ import { spellcheckUserText } from '../core/spellcheck';
 import { TranscriptSplitter } from '../core/transcript_splitter';
 import { MemoryStack } from '../core/layers';
 import * as fs from 'fs';
+import * as os from 'os';
 import yaml from 'js-yaml';
 
 const program = new Command();
@@ -173,6 +174,39 @@ program
       results.forEach(f => console.log(`  ✓ ${path.basename(f)}`));
     } else {
       console.log('No sessions found to split.');
+    }
+  });
+
+program
+  .command('install-hooks')
+  .description('Install Claude Code auto-save hooks to ~/.mempalace/hooks')
+  .action(async () => {
+    const homeHooks = path.join(os.homedir(), '.mempalace', 'hooks');
+    if (!fs.existsSync(homeHooks)) {
+      fs.mkdirSync(homeHooks, { recursive: true });
+    }
+
+    // Try to find hooks in the package
+    const packageHooks = path.join(__dirname, '..', '..', 'hooks');
+    const files = ['mempal_save_hook.sh', 'mempal_precompact_hook.sh'];
+
+    let installed = 0;
+    for (const file of files) {
+      const src = path.join(packageHooks, file);
+      if (fs.existsSync(src)) {
+        const dest = path.join(homeHooks, file);
+        fs.copyFileSync(src, dest);
+        fs.chmodSync(dest, 0o755);
+        console.log(`✓ Installed ${file} to ${dest}`);
+        installed++;
+      }
+    }
+
+    if (installed > 0) {
+      console.log('\nHooks installed! To use them with Claude Code, add them to your config:');
+      console.log(`claude config set postExchangeHook "${path.join(homeHooks, 'mempal_save_hook.sh')}"`);
+    } else {
+      console.error('Could not find hook source files in the package.');
     }
   });
 

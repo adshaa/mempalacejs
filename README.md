@@ -46,7 +46,7 @@ This runs an interactive onboarding flow to configure your initial rooms and win
 
 ### 3. Mining Data
 
-Point MemPalace at a project or a folder of chat transcripts to ingest them into the palace:
+Point MemPalace at a project or a folder of chat transcripts to ingest them into the palace. MemPalace **automatically respects your `.gitignore`** files to ensure only relevant source code is indexed.
 
 ```bash
 # Mine a codebase (default type is 'code')
@@ -54,6 +54,18 @@ mempalace mine ./my-project --wing my-project
 
 # Mine conversation history (JSON/JSONL/Markdown)
 mempalace mine ./conversations --type convo --wing legacy-chats
+```
+
+#### Custom Routing (`mempalace.yaml`)
+You can add a `mempalace.yaml` file to your project root to customize how files are routed to rooms:
+
+```yaml
+wing: "my-custom-wing"
+rooms:
+  - name: "security"
+    keywords: ["auth", "login", "encryption", "permission"]
+  - name: "ui-engine"
+    keywords: ["react", "component", "styling", "tailwind"]
 ```
 
 ### 4. Search and Status
@@ -97,7 +109,14 @@ MemPalace JS includes hooks designed for [Claude Code](https://github.com/anthro
 - **Auto-Save Hook:** Triggers a memory save every 15 exchanges.
 - **Pre-Compact Hook:** Ensures a full memory save before Claude compresses the conversation context.
 
-To install, see the scripts in the `hooks/` directory and add them to your Claude settings.
+### Installation
+You can install the hooks to your local `.mempalace` directory automatically:
+
+```bash
+mempalace install-hooks
+```
+
+Follow the on-screen instructions to add them to your Claude configuration.
 
 ## Model Context Protocol (MCP) Integration
 

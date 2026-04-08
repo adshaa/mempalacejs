@@ -21,7 +21,8 @@
   "license": "ISC",
   "type": "commonjs",
   "files": [
-    "dist"
+    "dist",
+    "hooks"
   ],
   "dependencies": {
     "@clack/prompts": "^1.2.0",

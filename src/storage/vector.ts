@@ -27,18 +27,24 @@ export class VectorStorage {
   }
 
   private initWorker() {
-    // Strategy: 
-    // 1. Try dist/storage/embedding_worker.js (Production/Build)
-    // 2. Try src/storage/embedding_worker.ts (Dev with loader)
+    // Robust worker path resolution for production (bundled) and development
+    const possiblePaths = [
+      path.join(__dirname, 'embedding_worker.js'),            // Same dir (src/storage or dist/storage)
+      path.join(__dirname, 'storage', 'embedding_worker.js'),   // From dist/index.js
+      path.join(__dirname, '..', 'storage', 'embedding_worker.js'), // From dist/cli/index.js
+      path.join(__dirname, 'embedding_worker.ts'),           // Development src/storage
+    ];
     
-    let workerPath = path.join(process.cwd(), 'dist', 'storage', 'embedding_worker.js');
-    
-    if (!fs.existsSync(workerPath)) {
-      // Fallback for development/testing
-      workerPath = path.join(__dirname, 'embedding_worker.js');
-      if (!fs.existsSync(workerPath)) {
-          workerPath = path.join(__dirname, 'embedding_worker.ts');
+    let workerPath = '';
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        workerPath = p;
+        break;
       }
+    }
+
+    if (!workerPath) {
+      throw new Error(`Could not locate embedding_worker.js in any of: ${possiblePaths.join(', ')}`);
     }
 
     try {
