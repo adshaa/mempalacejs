@@ -1,0 +1,10 @@
+node_modules/
+dist/
+venv/
+.tmp/
+.DS_Store
+*.log
+mempalace/
+*.sqlite3
+*.db
+
