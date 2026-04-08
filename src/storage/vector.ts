@@ -35,11 +35,17 @@ export class VectorStorage {
     // 2. Check storage/ dir (for bundled dist/index.js)
     // 3. Check ../storage dir (for bundled dist/cli/index.js)
     // 4. Check src/storage dir (for development)
+    
+    let baseDir = __dirname;
+    
     const possiblePaths = [
-      path.join(__dirname, 'embedding_worker.js'),
-      path.join(__dirname, 'storage', 'embedding_worker.js'),
-      path.join(__dirname, '..', 'storage', 'embedding_worker.js'),
-      path.join(__dirname, 'embedding_worker.ts'),
+      path.join(baseDir, 'embedding_worker.js'),
+      path.join(baseDir, 'embedding_worker.mjs'),
+      path.join(baseDir, 'storage', 'embedding_worker.js'),
+      path.join(baseDir, 'storage', 'embedding_worker.mjs'),
+      path.join(baseDir, '..', 'storage', 'embedding_worker.js'),
+      path.join(baseDir, '..', 'storage', 'embedding_worker.mjs'),
+      path.join(baseDir, 'embedding_worker.ts'),
     ];
     
     const workerPath = possiblePaths.find(p => fs.existsSync(p));
