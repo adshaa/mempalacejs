@@ -20,7 +20,7 @@ const program = new Command();
 program
   .name('mempalace')
   .description('Give your AI a memory — mine projects and conversations into a searchable palace.')
-  .version('1.0.0');
+  .version('0.0.2-dev');
 
 program
   .command('init')
