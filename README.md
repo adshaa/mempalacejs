@@ -65,14 +65,12 @@ MemPalace is built to act as a memory backend for AI assistants. To give Claude 
 {
   "mcpServers": {
     "mempalace": {
-      "command": "mempalace",
-      "args": ["mcp"]
+      "command": "npx",
+      "args": ["-y", "mempalacejs", "mcp"]
     }
   }
 }
 ```
-
-*Note: Ensure you have installed the package globally with `npm install -g mempalacejs` first.*
 
 ## Architecture
 
