@@ -12,17 +12,36 @@ async function getExtractor() {
 
 interface EmbeddingRequest {
   id: string;
-  text: string;
+  texts: string[];
 }
 
 if (parentPort) {
   parentPort.on('message', async (message: EmbeddingRequest) => {
-    const { id, text } = message;
+    const { id, texts } = message;
     try {
       const pipeline = await getExtractor();
-      const output = await pipeline(text, { pooling: 'mean', normalize: true });
-      const embedding = Array.from(output.data);
-      parentPort?.postMessage({ id, embedding });
+      const output = await pipeline(texts, { pooling: 'mean', normalize: true });
+      
+      // If single text, output.data is a single array. 
+      // If multiple texts, output.data is a flattened array of all embeddings.
+      // Transformers.js returns a Tensor.
+      
+      const embeddings: number[][] = [];
+      const dims = output.dims; // e.g. [2, 384]
+      const data = output.data;
+      
+      if (dims.length === 2) {
+        const numEmbeddings = dims[0];
+        const embeddingSize = dims[1];
+        for (let i = 0; i < numEmbeddings; i++) {
+          embeddings.push(Array.from(data.slice(i * embeddingSize, (i + 1) * embeddingSize)) as number[]);
+        }
+      } else {
+        // Single embedding case (though pipeline with array usually returns 2D)
+        embeddings.push(Array.from(data) as number[]);
+      }
+
+      parentPort?.postMessage({ id, embeddings });
     } catch (error) {
       parentPort?.postMessage({ id, error: (error as Error).message });
     }

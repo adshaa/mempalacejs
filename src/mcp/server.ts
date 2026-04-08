@@ -8,6 +8,23 @@ import { traverseGraph, findTunnels, graphStats } from "../storage/palace_graph"
 import { MemoryStack } from "../core/layers";
 import * as path from 'path';
 import pkg from '../../package.json';
+import fastJson from 'fast-json-stringify';
+
+const stringifyGeneric = fastJson({ type: 'object', additionalProperties: true });
+const stringifyDrawers = fastJson({
+  type: 'array',
+  items: {
+    type: 'object',
+    properties: {
+      id: { type: 'string' },
+      content: { type: 'string' },
+      wing: { type: 'string' },
+      room: { type: 'string' },
+      similarity: { type: 'number' }
+    },
+    additionalProperties: true
+  }
+});
 
 const config = new MempalaceConfig();
 const dbPath = path.join(config.palacePath, 'lancedb');
@@ -53,14 +70,14 @@ When WRITING AAAK: use entity codes, mark emotions, keep structure tight.`;
 server.tool("mempalace_status", {}, async () => {
   const tax = await storage.getTaxonomy();
   return {
-    content: [{ type: "text", text: JSON.stringify({ total_drawers: tax.total, palace_path: config.palacePath }) }]
+    content: [{ type: "text", text: stringifyGeneric({ total_drawers: tax.total, palace_path: config.palacePath }) }]
   };
 });
 
 server.tool("mempalace_list_wings", {}, async () => {
   const tax = await storage.getTaxonomy();
   return {
-    content: [{ type: "text", text: JSON.stringify({ wings: tax.wings }) }]
+    content: [{ type: "text", text: stringifyGeneric({ wings: tax.wings }) }]
   };
 });
 
@@ -73,7 +90,7 @@ server.tool("mempalace_list_rooms", { wing: z.string().optional() }, async ({ wi
     }
   }
   return {
-    content: [{ type: "text", text: JSON.stringify(counts) }]
+    content: [{ type: "text", text: stringifyGeneric(counts) }]
   };
 });
 
@@ -87,7 +104,7 @@ server.tool("mempalace_get_taxonomy", {}, async () => {
     tax[w][r] = (tax[w][r] || 0) + 1;
   }
   return {
-    content: [{ type: "text", text: JSON.stringify(tax) }]
+    content: [{ type: "text", text: stringifyGeneric(tax) }]
   };
 });
 
@@ -99,7 +116,7 @@ server.tool("mempalace_search", {
 }, async ({ query, limit, wing, room }) => {
   const results = await storage.search(query, limit || 5, { wing, room });
   return {
-    content: [{ type: "text", text: JSON.stringify(results) }]
+    content: [{ type: "text", text: stringifyDrawers(results) }]
   };
 });
 
@@ -109,13 +126,13 @@ server.tool("mempalace_check_duplicate", {
 }, async ({ content, threshold }) => {
   const dup = await checkDuplicate(content, threshold);
   return {
-    content: [{ type: "text", text: JSON.stringify(dup) }]
+    content: [{ type: "text", text: stringifyGeneric(dup) }]
   };
 });
 
 server.tool("mempalace_get_aaak_spec", {}, async () => {
   return {
-    content: [{ type: "text", text: JSON.stringify({ aaak_spec: AAAK_SPEC }) }]
+    content: [{ type: "text", text: stringifyGeneric({ aaak_spec: AAAK_SPEC }) }]
   };
 });
 
@@ -147,7 +164,7 @@ server.tool("mempalace_traverse_graph", {
 }, async ({ start_room, max_hops }) => {
   const res = await traverseGraph(storage, start_room, max_hops || 2);
   return {
-    content: [{ type: "text", text: JSON.stringify(res) }]
+    content: [{ type: "text", text: stringifyGeneric(res) }]
   };
 });
 
@@ -157,14 +174,14 @@ server.tool("mempalace_find_tunnels", {
 }, async ({ wing_a, wing_b }) => {
   const res = await findTunnels(storage, wing_a, wing_b);
   return {
-    content: [{ type: "text", text: JSON.stringify(res) }]
+    content: [{ type: "text", text: stringifyGeneric(res) }]
   };
 });
 
 server.tool("mempalace_graph_stats", {}, async () => {
   const res = await graphStats(storage);
   return {
-    content: [{ type: "text", text: JSON.stringify(res) }]
+    content: [{ type: "text", text: stringifyGeneric(res) }]
   };
 });
 
@@ -178,7 +195,7 @@ server.tool("mempalace_add_drawer", {
   const dup = await checkDuplicate(args.content);
   if (dup.isDuplicate) {
     return {
-      content: [{ type: "text", text: JSON.stringify({ status: "skipped", message: "Duplicate content", existingId: dup.id }) }]
+      content: [{ type: "text", text: stringifyGeneric({ status: "skipped", message: "Duplicate content", existingId: dup.id }) }]
     };
   }
 
@@ -194,7 +211,7 @@ server.tool("mempalace_add_drawer", {
     filedAt: new Date().toISOString()
   });
   return {
-    content: [{ type: "text", text: JSON.stringify({ status: "added", id }) }]
+    content: [{ type: "text", text: stringifyGeneric({ status: "added", id }) }]
   };
 });
 
@@ -203,7 +220,7 @@ server.tool("mempalace_delete_drawer", {
 }, async ({ id }) => {
   await storage.deleteDrawer(id);
   return {
-    content: [{ type: "text", text: JSON.stringify({ status: "deleted", id }) }]
+    content: [{ type: "text", text: stringifyGeneric({ status: "deleted", id }) }]
   };
 });
 
@@ -215,7 +232,7 @@ server.tool("mempalace_kg_query", {
 }, async ({ entity, direction }) => {
   const res = await kg.queryEntity(entity, undefined, direction || 'both');
   return {
-    content: [{ type: "text", text: JSON.stringify(res) }]
+    content: [{ type: "text", text: stringifyGeneric(res as any) }]
   };
 });
 
@@ -226,7 +243,7 @@ server.tool("mempalace_kg_add", {
 }, async ({ subject, predicate, object }) => {
   const id = kg.addTriple({ subject, predicate, object });
   return {
-    content: [{ type: "text", text: JSON.stringify({ status: "added", id }) }]
+    content: [{ type: "text", text: stringifyGeneric({ status: "added", id }) }]
   };
 });
 
@@ -237,7 +254,7 @@ server.tool("mempalace_kg_invalidate", {
 }, async ({ subject, predicate, object }) => {
   kg.invalidate(subject, predicate, object);
   return {
-    content: [{ type: "text", text: JSON.stringify({ status: "invalidated" }) }]
+    content: [{ type: "text", text: stringifyGeneric({ status: "invalidated" }) }]
   };
 });
 
@@ -246,14 +263,14 @@ server.tool("mempalace_kg_timeline", {
 }, async ({ entity }) => {
   const res = kg.timeline(entity);
   return {
-    content: [{ type: "text", text: JSON.stringify(res) }]
+    content: [{ type: "text", text: stringifyGeneric(res as any) }]
   };
 });
 
 server.tool("mempalace_kg_stats", {}, async () => {
   const res = kg.stats();
   return {
-    content: [{ type: "text", text: JSON.stringify(res) }]
+    content: [{ type: "text", text: stringifyGeneric(res) }]
   };
 });
 
@@ -278,7 +295,7 @@ server.tool("mempalace_diary_write", {
     filedAt: new Date().toISOString()
   });
   return {
-    content: [{ type: "text", text: JSON.stringify({ status: "written", id }) }]
+    content: [{ type: "text", text: stringifyGeneric({ status: "written", id }) }]
   };
 });
 
@@ -289,7 +306,7 @@ server.tool("mempalace_diary_read", {
   const wing = `agent_${agent_name.toLowerCase()}`;
   const results = await storage.listDrawers(limit || 10, { wing, room: 'diary' });
   return {
-    content: [{ type: "text", text: JSON.stringify(results) }]
+    content: [{ type: "text", text: stringifyDrawers(results as any) }]
   };
 });
 

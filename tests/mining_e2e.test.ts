@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { VectorStorage } from '../src/storage/vector';
-import { mineDirectory } from '../core/miner';
-import { mineConversations } from '../core/convo_miner';
+import { mineDirectory } from '../src/core/miner';
+import { mineConversations } from '../src/core/convo_miner';
 import * as fs from 'fs';
 import * as path from 'path';
 

@@ -85,8 +85,20 @@ export function detectRoom(filepath: string, content: string, rooms: { name: str
     }
   }
 
-  // 4. Content-based keyword scoring (using FOLDER_ROOM_MAP as a base)
+  // 4. Content-based keyword scoring
   const scores: Record<string, number> = {};
+  
+  // Use custom rooms first
+  for (const room of rooms) {
+    const candidates = [room.name.toLowerCase(), ...room.keywords.map(k => k.toLowerCase())];
+    for (const c of candidates) {
+      if (contentLower.includes(c)) {
+        scores[room.name] = (scores[room.name] || 0) + 1;
+      }
+    }
+  }
+
+  // Then FOLDER_ROOM_MAP
   for (const [key, room] of Object.entries(FOLDER_ROOM_MAP)) {
     if (contentLower.includes(key)) {
       scores[room] = (scores[room] || 0) + 1;
@@ -142,7 +154,10 @@ export async function mineDirectory(
   
   console.log(`\nMining ${files.length} files into wing: ${config.wing}`);
 
-  let totalDrawers = 0;
+  let totalDrawersCount = 0;
+  const BATCH_SIZE = 20;
+  let batch: any[] = [];
+
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     try {
@@ -152,7 +167,7 @@ export async function mineDirectory(
 
       for (const chunk of chunks) {
         const id = `drawer_${config.wing}_${room}_${crypto.createHash('md5').update(file + chunk.chunkIndex).digest('hex').substring(0, 16)}`;
-        await storage.upsertDrawer({
+        batch.push({
           id,
           content: chunk.content,
           wing: config.wing,
@@ -162,7 +177,12 @@ export async function mineDirectory(
           addedBy: agent,
           filedAt: new Date().toISOString()
         });
-        totalDrawers++;
+
+        if (batch.length >= BATCH_SIZE) {
+          await storage.upsertDrawers(batch);
+          totalDrawersCount += batch.length;
+          batch = [];
+        }
       }
       
       if ((i + 1) % 10 === 0 || i === files.length - 1) {
@@ -172,5 +192,11 @@ export async function mineDirectory(
       console.error(`\nError processing ${file}: ${e.message}`);
     }
   }
-  console.log(`\nDone. Filed ${totalDrawers} drawers.`);
+
+  if (batch.length > 0) {
+    await storage.upsertDrawers(batch);
+    totalDrawersCount += batch.length;
+  }
+
+  console.log(`\nDone. Filed ${totalDrawersCount} drawers.`);
 }

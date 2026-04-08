@@ -134,7 +134,10 @@ export async function mineConversations(
 
   console.log(`\nMining ${files.length} conversation files into wing: ${wing}`);
 
-  let totalDrawers = 0;
+  let totalDrawersCount = 0;
+  const BATCH_SIZE = 20;
+  let batch: Drawer[] = [];
+
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     try {
@@ -151,7 +154,7 @@ export async function mineConversations(
 
       for (const chunk of chunks) {
         const id = `drawer_${wing}_${room}_${crypto.createHash('md5').update(file + chunk.chunkIndex).digest('hex').substring(0, 16)}`;
-        await storage.upsertDrawer({
+        batch.push({
           id,
           content: chunk.content,
           wing,
@@ -161,7 +164,12 @@ export async function mineConversations(
           addedBy: agent,
           filedAt: new Date().toISOString()
         });
-        totalDrawers++;
+
+        if (batch.length >= BATCH_SIZE) {
+          await storage.upsertDrawers(batch);
+          totalDrawersCount += batch.length;
+          batch = [];
+        }
       }
 
       if ((i + 1) % 5 === 0 || i === files.length - 1) {
@@ -171,5 +179,11 @@ export async function mineConversations(
       console.error(`\nError processing ${file}: ${e.message}`);
     }
   }
-  console.log(`\nDone. Filed ${totalDrawers} drawers.`);
+
+  if (batch.length > 0) {
+    await storage.upsertDrawers(batch);
+    totalDrawersCount += batch.length;
+  }
+
+  console.log(`\nDone. Filed ${totalDrawersCount} drawers.`);
 }

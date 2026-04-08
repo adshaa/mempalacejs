@@ -9,8 +9,11 @@ export class VectorStorage {
   private tableName: string;
   private db: lancedb.Connection | null = null;
   private worker: Worker | null = null;
-  private pendingRequests: Map<string, { resolve: (val: number[]) => void, reject: (err: Error) => void }> = new Map();
+  private pendingRequests: Map<string, { resolve: (val: number[][]) => void, reject: (err: Error) => void }> = new Map();
   private requestIdCounter = 0;
+  
+  private coalescingQueue: { text: string, resolve: (val: number[]) => void, reject: (err: Error) => void }[] = [];
+  private coalesceTimeout: NodeJS.Timeout | null = null;
 
   constructor(dbPath: string, tableName: string) {
     this.dbPath = dbPath;
@@ -50,15 +53,15 @@ export class VectorStorage {
     try {
       const isTs = workerPath.endsWith('.ts');
       this.worker = new Worker(workerPath, {
-        execArgv: isTs ? ['--loader', 'ts-node/esm'] : []
+        execArgv: isTs ? ['-r', 'ts-node/register'] : []
       });
 
       this.worker.on('message', (msg) => {
-        const { id, embedding, error } = msg;
+        const { id, embeddings, error } = msg;
         const pending = this.pendingRequests.get(id);
         if (pending) {
           if (error) pending.reject(new Error(error));
-          else pending.resolve(embedding);
+          else pending.resolve(embeddings);
           this.pendingRequests.delete(id);
         }
       });
@@ -80,24 +83,64 @@ export class VectorStorage {
   }
 
   public async getEmbedding(text: string): Promise<number[]> {
+    return new Promise((resolve, reject) => {
+      this.coalescingQueue.push({ text, resolve, reject });
+      if (!this.coalesceTimeout) {
+        this.coalesceTimeout = setTimeout(() => this.processCoalescedQueue(), 10); // 10ms batching window
+      }
+    });
+  }
+
+  private async processCoalescedQueue() {
+    if (this.coalescingQueue.length === 0) return;
+    const batch = this.coalescingQueue.slice();
+    this.coalescingQueue = [];
+    this.coalesceTimeout = null;
+
+    try {
+      const embeddings = await this.getEmbeddings(batch.map(b => b.text));
+      if (!embeddings || embeddings.length !== batch.length) {
+        throw new Error(`Worker returned ${embeddings?.length} embeddings for ${batch.length} texts`);
+      }
+      for (let i = 0; i < batch.length; i++) {
+        batch[i].resolve(embeddings[i]);
+      }
+    } catch (e) {
+      for (const b of batch) {
+        b.reject(e as Error);
+      }
+    }
+  }
+
+  public async getEmbeddings(texts: string[]): Promise<number[][]> {
     if (!this.worker) this.initWorker();
     
     const id = `req_${Date.now()}_${this.requestIdCounter++}`;
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(id, { resolve, reject });
-      this.worker!.postMessage({ id, text });
+      this.worker!.postMessage({ id, texts });
     });
   }
 
   public async upsertDrawer(drawer: Drawer): Promise<void> {
+    await this.upsertDrawers([drawer]);
+  }
+
+  public async upsertDrawers(drawers: Drawer[]): Promise<void> {
     if (!this.db) await this.init();
-    if (!drawer.vector) {
-      drawer.vector = await this.getEmbedding(drawer.content);
+    
+    const needsEmbedding = drawers.filter(d => !d.vector);
+    if (needsEmbedding.length > 0) {
+      const texts = needsEmbedding.map(d => d.content);
+      const embeddings = await this.getEmbeddings(texts);
+      for (let i = 0; i < needsEmbedding.length; i++) {
+        needsEmbedding[i].vector = embeddings[i];
+      }
     }
 
     try {
       const tableNames = await this.db!.tableNames();
-      const record = {
+      const records = drawers.map(drawer => ({
         id: drawer.id,
         vector: drawer.vector,
         content: drawer.content,
@@ -112,16 +155,16 @@ export class VectorStorage {
         type: drawer.type || '',
         agent: drawer.agent || '',
         date: drawer.date || ''
-      };
+      }));
 
       if (!tableNames.includes(this.tableName)) {
-        await this.db!.createTable(this.tableName, [record]);
+        await this.db!.createTable(this.tableName, records);
       } else {
         const table = await this.db!.openTable(this.tableName);
-        await table.add([record]);
+        await table.add(records);
       }
     } catch (e) {
-      console.error(`Failed to upsert drawer ${drawer.id}`, e);
+      console.error(`Failed to upsert drawers`, e);
       throw e;
     }
   }
@@ -228,6 +271,10 @@ export class VectorStorage {
   }
 
   public async close() {
+    if (this.coalesceTimeout) {
+      clearTimeout(this.coalesceTimeout);
+      this.coalesceTimeout = null;
+    }
     if (this.worker) {
       await this.worker.terminate();
       this.worker = null;

@@ -89,12 +89,20 @@ This document outlines a comprehensive, phased approach to rewriting the MemPala
 3.  **Performance Auditing:**
     *   Compare embedding generation speed and memory usage between Python's Chroma/ONNX and Node's LanceDB/Transformers.js. (Completed: Confirmed non-blocking worker architecture is superior for UI responsiveness).
 
-## Phase 8: Production Readiness (Next Steps)
+## Phase 8: Production Readiness (In Progress)
 **Goal:** Finalize the package for distribution and community use.
 
 1.  **Global CLI polish:** Ensure `bin` path and permissions are perfect for `npm install -g`.
 2.  **Documentation expansion:** Add more examples for custom room/wing routing.
 3.  **CI/CD:** Set up GitHub Actions for automated testing on push.
+
+## Phase 9: Optimization & Performance (Planned)
+**Goal:** Maximize Node.js performance advantages (V8 JIT, Worker Threads, Streaming).
+See `OPTIMIZATION_PLAN.md` for details.
+
+1.  **Batch Embedding Pipeline:** Implement multi-string processing in workers.
+2.  **Schema-Aware Serialization:** Use `fast-json-stringify` for MCP responses.
+3.  **Streaming Memory Layers:** Refactor context generation to use `AsyncGenerators`.
 
 ## Final Output
 A published NPM package (`mempalacejs`) containing a `bin` executable (`mempalace`) that acts identically to the Python system, with zero external dependencies required by the user.
