@@ -8,5 +8,6 @@ mempalace/
 *.sqlite3
 *.sqlite3-*
 *.db
+tests/test_data/
 benchmarks/data/
 repomix-output.xml
