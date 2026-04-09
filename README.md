@@ -8,6 +8,12 @@
    [_______________]
 ```
 
+[![NPM Version](https://img.shields.io/npm/v/mempalacejs.svg)](https://www.npmjs.com/package/mempalacejs)
+[![License](https://img.shields.io/npm/l/mempalacejs.svg)](https://github.com/adshaa/mempalacejs/blob/dev/LICENSE)
+![TypeScript](https://img.shields.io/badge/language-TypeScript-blue)
+![Recall Accuracy](https://img.shields.io/badge/Recall@5-96.4%25-orange)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/adshaa/mempalacejs/pulls)
+
 ![Ingestion Speed](https://img.shields.io/badge/Ingestion-28.3%20dr%2Fs-blue)
 ![Startup Latency](https://img.shields.io/badge/Startup-%3C150ms-success)
 ![Fluidity](https://img.shields.io/badge/UI_Fluidity-90.1%25-brightgreen)
