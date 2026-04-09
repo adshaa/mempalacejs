@@ -198,7 +198,7 @@ When connected, your agent can call tools such as:
   "mcpServers": {
     "mempalace": {
       "command": "npx",
-      "args": ["-y", "mempalacejs", "mcp"]
+      "args": ["-y", "@mempalace/core", "mcp"]
     }
   }
 }
@@ -220,7 +220,7 @@ MemPalace organizes memories using a spatial metaphor:
 
 ## Node.js Architecture & Performance
 
-The `mempalacejs` architecture is designed to leverage Node.js's strengths in asynchronous I/O and multi-threaded processing to provide a high-performance, local-first memory system.
+The `@mempalace/core` architecture is designed to leverage Node.js's strengths in asynchronous I/O and multi-threaded processing to provide a high-performance, local-first memory system.
 
 *   **Batched Embedding Pipeline:**
     Utilizes `worker_threads` to offload CPU-intensive embedding generation (via `Transformers.js`) to background threads. The system implements **Request Coalescing**, bundling multiple simultaneous embedding requests into a single worker pass to minimize IPC overhead and maximize ONNX runtime efficiency.

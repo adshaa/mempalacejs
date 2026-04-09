@@ -48,4 +48,4 @@ See `OPTIMIZATION_PLAN.md` for details.
 3.  **Streaming Memory Layers:** Refactor context generation to use `AsyncGenerators`. (Completed: O(1) memory).
 
 ## Final Output
-A production-ready NPM package (`mempalacejs`) containing a `bin` executable (`mempalace`) that outperforms the original Python implementation while maintaining perfect logic parity.
+A production-ready NPM package (`@mempalace/core`) containing a `bin` executable (`mempalace`) that outperforms the original Python implementation while maintaining perfect logic parity.
