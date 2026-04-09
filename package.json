@@ -53,7 +53,8 @@
     "hooks",
     "docs",
     "README.md",
-    "DIALECT.md"
+    "DIALECT.md",
+    "LICENSE"
   ],
   "dependencies": {
     "@lancedb/lancedb": "^0.27.2",

@@ -1,5 +1,13 @@
 # MemPalace JS
 
+```text
+       _________
+      /         \
+     /  [Mem]    \
+    /   Palace    \
+   [_______________]
+```
+
 ![Ingestion Speed](https://img.shields.io/badge/Ingestion-28.3%20dr%2Fs-blue)
 ![Startup Latency](https://img.shields.io/badge/Startup-%3C150ms-success)
 ![Fluidity](https://img.shields.io/badge/UI_Fluidity-90.1%25-brightgreen)
@@ -56,6 +64,18 @@ While most local RAG implementations use simple file buffers or basic SQLite ext
 - **Embedded Hybrid Search:** Combines **LanceDB** vectors with a **Temporal Knowledge Graph** (`better-sqlite3`).
 - **AAAK Dialect Compression:** High-density, LLM-readable memory storage that saves 80% on tokens while preserving context.
 - **Native MCP Server:** Seamless integration with **Claude Code** and **Claude Desktop**.
+
+---
+
+## ⚡ AAAK at a glance (Lossy Memory Compression)
+
+MemPalace JS automatically compresses long project histories into high-density **AAAK** (Asynchronous AI Abbreviated Knowledge) dialect. This saves tokens while preserving the "who, what, and why" for the LLM.
+
+**Original Text:**
+> Jordan decided to switch the database to PostgreSQL because of the complex join requirements. This was a major milestone for the backend team.
+
+**AAAK Output:**
+> PROJ: backend | *fierce* JOR→switch DB to Postgres (joins) | ★★★★ | MIL: backend-db-switch
 
 ---
 
@@ -180,7 +200,15 @@ Follow the on-screen instructions to add them to your Claude configuration.
 
 ## Model Context Protocol (MCP) Integration
 
-MemPalace JS acts as a high-performance memory backend for AI agents. To give Claude access to your Memory Palace, add the MCP server to your configuration.
+MemPalace JS acts as a high-performance memory backend for AI agents.
+
+### Common Tools for Agents
+When connected, your agent can call tools such as:
+- `mempalace_search`: Semantic search across all memories.
+- `mempalace_wake_up`: Load the Identity (L0) and project milestones (L1).
+- `mempalace_kg_query`: Query the temporal relationship graph for entities.
+- `mempalace_diary_write`: Allow the agent to record its own observations.
+- `mempalace_traverse_graph`: Navigate between connected topics and wings.
 
 **For Claude Desktop (`~/.claude/claude_desktop_config.json`):**
 
@@ -245,7 +273,7 @@ The recent optimization pass focused on parallelizing the embedding pipeline and
 
 This project maintains strict test parity with the Python original.
 
-- **37 Tests Passed:** Covering normalization, AAAK compression, Knowledge Graph logic, project mining, and vector search.
+- **44 Tests Passed:** Covering normalization, AAAK compression, Knowledge Graph logic, project mining, and vector search.
 - **Test Command:** `npm run test` (Powered by `vitest`).
 
 ### Running Benchmarks
@@ -259,6 +287,11 @@ curl -fsSL -o benchmarks/data/longmemeval_s_cleaned.json https://huggingface.co/
 # 2. Run the runner
 npx tsx src/benchmarks/longmemeval_bench.ts benchmarks/data/longmemeval_s_cleaned.json
 ```
+
+### Contributing & Issues
+We welcome contributions! Please feel free to open an issue or submit a pull request on [GitHub](https://github.com/adshaa/mempalacejs).
+
+---
 
 ## License
 
