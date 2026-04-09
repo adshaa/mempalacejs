@@ -306,5 +306,9 @@ export async function runMcpServer() {
   process.on('SIGTERM', cleanup);
 
   await server.connect(transport);
+  
+  // Log to stderr to avoid breaking JSON-RPC
   console.error("MemPalace MCP server running on stdio");
+  console.error("Note: If this is your first run, the 90MB AI model will download on the first search/mine.");
+  console.error("To avoid timeouts, run 'mempalace setup' in your terminal.");
 }

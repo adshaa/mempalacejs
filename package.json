@@ -31,7 +31,8 @@
     "start": "node dist/cli/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepack": "npm run test && npm run build"
+    "prepack": "npm run test && npm run build",
+    "postinstall": "node dist/cli/index.js setup || true"
   },
   "keywords": [
     "mcp",
