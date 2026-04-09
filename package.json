@@ -1,6 +1,6 @@
 {
   "name": "mempalacejs",
-  "version": "0.1.5",
+  "version": "0.1.3",
   "description": "Local-first AI memory system and MCP server",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
