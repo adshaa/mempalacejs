@@ -296,6 +296,9 @@ server.tool("mempalace_diary_read", {
 export async function runMcpServer() {
   const transport = new StdioServerTransport();
   
+  // Ensure config directory and defaults exist
+  config.init();
+
   // Cleanup on exit
   const cleanup = async () => {
     await storage.close();

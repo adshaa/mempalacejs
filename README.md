@@ -13,7 +13,11 @@
 
 Give your AI a perfect, infinite memory. A local-first, zero-LLM memory system and Model Context Protocol (MCP) server designed to give AI assistants (like Claude, ChatGPT, and custom agents) a searchable, structured "Memory Palace."
 
+[**Jump to Quick Start 🚀**](#quick-start-plug-and-play-mcp-or-full-memory-journey)
+
 This is a **native Node.js / TypeScript port** of the original Python [MemPalace](https://github.com/milla-jovovich/mempalace) architecture, achieving full feature parity and benchmark validation while running seamlessly in JS-native environments.
+
+
 
 ***
 
@@ -99,86 +103,65 @@ MemPalace JS has been rigorously evaluated against the **LongMemEval** dataset (
 
 *Validation run on April 9th, 2026. Differences are within statistical variance for embedding pipeline implementations.*
 
-## Quick Start
+## Quick Start: Plug-and-Play MCP or Full Memory Journey
 
-### 1. Installation
+MemPalace JS is designed to be **Plug-and-Play**. You can connect it to your AI agent immediately without any preconfiguration. It will start with a fresh, empty palace that grows as you chat.
 
-You can install MemPalace globally using npm:
+For a more comprehensive experience, follow the structured journey below.
+
+### 🚀 Step 0: Immediate Start (Plug-and-Play MCP)
+If you want to start right away, just add the MCP server to your agent's configuration (see **Step 3**). The server will automatically initialize your local environment (`~/.mempalace`) and be ready to save your first memory.
+
+---
+
+### Step 1: Prepare the Engine
+Install the package and pre-download the 90MB AI model weights. This ensures your first memory recall is instantaneous.
 
 ```bash
+# 1. Global Installation
 npm install -g mempalacejs
-```
 
-### 2. Initialization
-
-Set up your personal Memory Palace (defaults to `~/.mempalace/palace`) and pre-download the required local AI models:
-
-```bash
-# Initialize palace structure and identity
-mempalace init
-
-# Pre-download local AI models (HuggingFace weights, ~90MB)
+# 2. Pre-download AI models
 mempalace setup
 ```
-The `setup` command ensures that your first search or codebase mine doesn't have a 1-minute delay while downloading the embedding model.
 
-### 3. Mining Data
-
-Point MemPalace at a project or a folder of chat transcripts to ingest them into the palace. MemPalace **automatically respects your `.gitignore`** files to ensure only relevant source code is indexed.
+### Step 2: Fuel the Palace (Mine & Initialize)
+A palace is only as good as what's inside. Define who you are and index your first project.
 
 ```bash
-# Mine a codebase (default type is 'code')
+# 1. Define your Identity (L0 context)
+mempalace init
+
+# 2. Mine your project codebase into a Wing
 mempalace mine ./my-project --wing my-project
-
-# Mine conversation history (JSON/JSONL/Markdown)
-mempalace mine ./conversations --type convo --wing legacy-chats
 ```
 
-#### Custom Routing (`mempalace.yaml`)
-You can add a `mempalace.yaml` file to your project root to customize how files are routed to rooms:
+### Step 3: Connect your Agent
+Now that the palace has "fuel," connect it to your favorite assistant.
 
-```yaml
-wing: "my-custom-wing"
-rooms:
-  - name: "security"
-    keywords: ["auth", "login", "encryption", "permission"]
-  - name: "ui-engine"
-    keywords: ["react", "component", "styling", "tailwind"]
+**For Claude Desktop (`~/.claude/claude_desktop_config.json`):**
+```json
+{
+  "mcpServers": {
+    "mempalace": {
+      "command": "npx",
+      "args": ["-y", "mempalacejs", "mcp"]
+    }
+  }
+}
 ```
 
-### 4. Search and Status
+***
 
-Search your ingested memories semantically:
+## 🔄 The Two-Way Connection
 
-```bash
-mempalace search "Why did we switch to TypeScript?"
-```
+MemPalace JS isn't just a "read-only" database; it's a living extension of your AI.
 
-Check the health, taxonomy, and stats of your Palace:
+1.  **System-to-Agent:** Use the CLI (`mempalace mine`) to index documentation, code, and legacy logs. The agent immediately "remembers" these via MCP tools.
+2.  **Agent-to-System:** As you chat, the agent can use `mempalace_add_drawer` or `mempalace_kg_add` to **proactively save new facts** about your preferences, decisions, or project status.
+3.  **Universal Sync:** Because they share the same local vault (`~/.mempalace`), any memory saved by the agent in Claude is immediately searchable in your terminal.
 
-```bash
-mempalace status
-```
-
-### 5. AI Context Generation
-
-Generate context strings for your AI assistants:
-
-```bash
-# Get Identity (L0) and Essential Story (L1)
-mempalace wake-up --wing my-project
-
-# Retrieve specific memories (L2)
-mempalace recall --wing my-project --room architecture --limit 5
-```
-
-### 6. Utility Commands
-
-Handle large multi-session transcript exports:
-
-```bash
-mempalace split large_transcripts.txt --output ./individual_sessions
-```
+***
 
 ## Claude Code Integration
 
