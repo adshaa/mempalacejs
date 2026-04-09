@@ -1,7 +1,7 @@
 {
-  "name": "mempalacejs",
-  "version": "0.1.4",
-  "description": "Local-first AI memory system and MCP server",
+  "name": "@mempalace/core",
+  "version": "0.1.0",
+  "description": "Native TypeScript AI memory system and MCP server (Zero-LLM, LanceDB)",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -35,15 +35,22 @@
     "postinstall": "node dist/cli/index.js setup || true"
   },
   "keywords": [
+    "typescript",
     "mcp",
+    "mcp-server",
+    "model-context-protocol",
     "memory",
-    "ai",
-    "local-first",
+    "agentic-memory",
+    "llm-memory",
+    "rag",
+    "local-ai",
+    "zero-llm",
     "vector-database",
     "lancedb",
     "knowledge-graph",
+    "transformers-js",
     "claude",
-    "agentic-memory"
+    "claude-code"
   ],
   "author": "Mempalace Contributors",
   "license": "ISC",

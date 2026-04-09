@@ -11,13 +11,13 @@ First, ensure you have the package installed globally, or use `npx`:
 
 **Option A: Global Install (Recommended)**
 ```bash
-npm install -g mempalacejs
+npm install -g @mempalace/core
 mempalace install-hooks
 ```
 
 **Option B: One-time use via npx**
 ```bash
-npx -y mempalacejs install-hooks
+npx -y @mempalace/core install-hooks
 ```
 
 ### Auto-Saving Memories
@@ -51,7 +51,7 @@ To give the Claude Desktop app access to your memory palace:
   "mcpServers": {
     "mempalace": {
       "command": "npx",
-      "args": ["-y", "mempalacejs", "mcp"]
+      "args": ["-y", "@mempalace/core", "mcp"]
     }
   }
 }
@@ -85,7 +85,7 @@ Once connected via MCP, the agent has access to 19 tools:
 If you see timeouts in your agent, it usually means the AI model is being downloaded for the first time.
 - **Background Download:** MemPalace JS automatically downloads the ~90MB model on the first search/mine if it's missing.
 - **Silent Progress:** The download progress is redirected to `stderr`, so it won't crash your MCP connection, but it may cause the first few tool calls to exceed the default timeout.
-- **Fix:** Run `mempalace setup` (or `npx mempalacejs setup`) in your terminal once to pre-download the model before using it in Claude.
+- **Fix:** Run `mempalace setup` (or `npx @mempalace/core setup`) in your terminal once to pre-download the model before using it in Claude.
 
 ### "No results found"
 Ensure you have run the `mempalace mine <dir>` command on your project first. The MCP server only reads what has been indexed into the `lancedb` folder.

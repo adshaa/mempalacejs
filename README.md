@@ -1,10 +1,10 @@
 # MemPalace JS
 
-[![NPM Version](https://img.shields.io/npm/v/mempalacejs.svg)](https://www.npmjs.com/package/mempalacejs)
-[![License](https://img.shields.io/npm/l/mempalacejs.svg)](https://github.com/adshaa/mempalacejs/blob/dev/LICENSE)
+[![NPM Version](https://img.shields.io/npm/v/@mempalace/core.svg)](https://www.npmjs.com/package/@mempalace/core)
+[![License](https://img.shields.io/npm/l/@mempalace/core.svg)](https://github.com/adshaa/mempalacejs/blob/dev/LICENSE)
 ![TypeScript](https://img.shields.io/badge/language-TypeScript-blue)
 ![Recall Accuracy](https://img.shields.io/badge/Recall@5-96.4%25-brightgreen)
-![Node Version](https://img.shields.io/node/v/mempalacejs)
+![Node Version](https://img.shields.io/node/v/@mempalace/core)
 
 ![Ingestion Speed](https://img.shields.io/badge/Ingestion-28.3%20dr%2Fs-blue)
 ![Startup Latency](https://img.shields.io/badge/Startup-%3C150ms-success)
@@ -119,7 +119,7 @@ Install the package and pre-download the 90MB AI model weights. This ensures you
 
 ```bash
 # 1. Global Installation
-npm install -g mempalacejs
+npm install -g @mempalace/core
 
 # 2. Pre-download AI models
 mempalace setup
@@ -145,7 +145,7 @@ Now that the palace has "fuel," connect it to your favorite assistant.
   "mcpServers": {
     "mempalace": {
       "command": "npx",
-      "args": ["-y", "mempalacejs", "mcp"]
+      "args": ["-y", "@mempalace/core", "mcp"]
     }
   }
 }
