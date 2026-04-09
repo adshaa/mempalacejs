@@ -28,6 +28,25 @@ export default defineConfig({
     '@lancedb/lancedb',
     'better-sqlite3',
     '@xenova/transformers',
+    'fsevents',
+    // Node.js built-ins
+    'fs',
+    'path',
+    'util',
+    'os',
+    'crypto',
+    'worker_threads',
+    'tty',
+    'readline',
+    'events',
+    'url',
+    'module',
   ],
+  // Node.js built-ins should be external
+  platform: 'node',
+  target: 'node18',
   onSuccess: 'chmod +x dist/cli/index.js dist/cli/index.mjs',
+  esbuildOptions(options) {
+    options.logLevel = 'error';
+  },
 });
