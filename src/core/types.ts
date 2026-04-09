@@ -23,6 +23,7 @@ export interface Drawer {
   chunkIndex: number;
   addedBy: string;
   filedAt: string;
+  sourceMtime?: number;
   importance?: number;
   hall?: string;
   topic?: string;

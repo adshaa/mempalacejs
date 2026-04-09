@@ -5,20 +5,26 @@ import { pipeline, FeatureExtractionPipeline, env } from '@xenova/transformers';
 env.allowLocalModels = true;
 
 let extractor: FeatureExtractionPipeline | null = null;
+let extractorPromise: Promise<FeatureExtractionPipeline> | null = null;
 
 async function getExtractor() {
-  if (!extractor) {
-    extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
-        // Redirect progress to stderr so it doesn't break MCP stdout JSON-RPC
-        progress_callback: (info: any) => {
-            if (info.status === 'progress') {
-                process.stderr.write(`[MemPalace AI Model] Downloading: ${info.file} ${info.progress.toFixed(1)}%\r`);
-            } else if (info.status === 'done') {
-                process.stderr.write(`[MemPalace AI Model] Downloaded: ${info.file}\n`);
-            }
-        }
-    });
-  }
+  if (extractor) return extractor;
+  if (extractorPromise) return extractorPromise;
+
+  process.stderr.write(`[MemPalace AI Model] Initializing transformer...\n`);
+  extractorPromise = pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
+      // Redirect progress to stderr so it doesn't break MCP stdout JSON-RPC
+      progress_callback: (info: any) => {
+          if (info.status === 'progress') {
+              process.stderr.write(`[MemPalace AI Model] Downloading: ${info.file} ${info.progress.toFixed(1)}%\r`);
+          } else if (info.status === 'done') {
+              process.stderr.write(`[MemPalace AI Model] Downloaded: ${info.file}\n`);
+          }
+      }
+  });
+
+  extractor = await extractorPromise;
+  process.stderr.write(`[MemPalace AI Model] Ready.\n`);
   return extractor;
 }
 

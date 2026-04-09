@@ -5,7 +5,7 @@ import * as os from 'os';
 
 // Mocking dependencies for MCP tests
 // We need to point to a test directory
-const testDir = path.join(os.tmpdir(), 'mempalace_mcp_test');
+const testDir = path.join(os.tmpdir(), `mempalace_mcp_test_${Math.random().toString(36).substring(7)}`);
 
 import { VectorStorage } from '../src/storage/vector';
 import { KnowledgeGraph } from '../src/storage/sqlite';

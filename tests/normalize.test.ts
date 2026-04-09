@@ -40,4 +40,58 @@ describe('Normalize', () => {
     const result = normalize(fp);
     expect(result.trim()).toBe('');
   });
+
+  it('should normalize Claude Code JSONL', () => {
+    const lines = [
+      JSON.stringify({ type: 'human', message: { content: 'Hi' } }),
+      JSON.stringify({ type: 'assistant', message: { content: 'Hello' } })
+    ];
+    const fp = createTempFile(lines.join('\n'), '.jsonl');
+    const result = normalize(fp);
+    expect(result).toContain('> Hi');
+    expect(result).toContain('Hello');
+  });
+
+  it('should normalize ChatGPT JSON', () => {
+    const data = {
+      mapping: {
+        'root': { message: null, children: ['msg1'] },
+        'msg1': { 
+          message: { author: { role: 'user' }, content: { parts: ['Hello'] } },
+          children: ['msg2']
+        },
+        'msg2': {
+          message: { author: { role: 'assistant' }, content: { parts: ['Hi there'] } },
+          children: []
+        }
+      }
+    };
+    const fp = createTempFile(JSON.stringify(data), '.json');
+    const result = normalize(fp);
+    expect(result).toContain('> Hello');
+    expect(result).toContain('Hi there');
+  });
+
+  it('should normalize Slack JSON', () => {
+    const data = [
+      { type: 'message', user: 'U1', text: 'Hello' },
+      { type: 'message', user: 'U2', text: 'Hi' }
+    ];
+    const fp = createTempFile(JSON.stringify(data), '.json');
+    const result = normalize(fp);
+    expect(result).toContain('> Hello');
+    expect(result).toContain('Hi');
+  });
+
+  it('should normalize Codex JSONL', () => {
+    const lines = [
+      JSON.stringify({ type: 'session_meta' }),
+      JSON.stringify({ type: 'event_msg', payload: { type: 'user_message', message: 'Hello' } }),
+      JSON.stringify({ type: 'event_msg', payload: { type: 'agent_message', message: 'Hi' } })
+    ];
+    const fp = createTempFile(lines.join('\n'), '.jsonl');
+    const result = normalize(fp);
+    expect(result).toContain('> Hello');
+    expect(result).toContain('Hi');
+  });
 });

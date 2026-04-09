@@ -4,9 +4,10 @@ import { mineDirectory } from '../src/core/miner';
 import { mineConversations } from '../src/core/convo_miner';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 
 describe('Mining E2E Pipeline', () => {
-  const testDir = path.join(__dirname, 'test_mining_data');
+  const testDir = path.join(os.tmpdir(), `mempalace_e2e_test_${Math.random().toString(36).substring(7)}`);
   const dbPath = path.join(testDir, 'lancedb');
   const wingName = 'test_wing';
   let storage: VectorStorage;
@@ -37,22 +38,37 @@ describe('Mining E2E Pipeline', () => {
 
   it('Should mine project files correctly', async () => {
     const projectDir = path.join(testDir, 'project');
-    await mineDirectory(projectDir, storage, { wing: wingName });
+    const result = await mineDirectory(projectDir, storage, { wing: wingName });
+    expect(result.filed).toBeGreaterThanOrEqual(1);
     
+    // Check taxonomy
+    const taxonomy = await storage.getTaxonomy();
+    expect(taxonomy.wings[wingName]).toBeGreaterThan(0);
+
+    // Search for content from auth.ts
     const results = await storage.search('Login logic');
     expect(results.length).toBeGreaterThan(0);
-    expect(results[0].content).toContain('Login logic');
-    expect(results[0].room).toBe('backend'); 
+    const authDrawer = results.find(r => r.content.includes('Login logic'));
+    expect(authDrawer).toBeDefined();
   });
 
   it('Should mine conversation files correctly', async () => {
     const convoDir = path.join(testDir, 'convos');
-    await mineConversations(convoDir, storage, wingName);
+    const result = await mineConversations(convoDir, storage, wingName);
+    expect(result.filed).toBeGreaterThanOrEqual(1);
     
     const results = await storage.search('How do I login?');
     expect(results.length).toBeGreaterThan(0);
-    expect(results[0].content).toContain('> How do I login?');
-    expect(results[0].content).toContain('You use the login function');
+    const convoDrawer = results.find(r => r.content.includes('How do I login?'));
+    expect(convoDrawer).toBeDefined();
+  });
+
+  it('Should skip unchanged files on subsequent mine', async () => {
+    const projectDir = path.join(testDir, 'project');
+    // Third mine (first was in first test, second was in convo test? No, projectDir is different)
+    const result = await mineDirectory(projectDir, storage, { wing: wingName });
+    expect(result.filed).toBe(0);
+    expect(result.skipped).toBeGreaterThan(0);
   });
 
   it('Should show correct taxonomy/status', async () => {

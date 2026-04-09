@@ -6,8 +6,10 @@ import { KnowledgeGraph } from '../src/storage/sqlite';
 import * as path from 'path';
 import * as fs from 'fs';
 
+import * as os from 'os';
+
 describe('Optimization Parity Baseline', () => {
-  const dbDir = path.join(__dirname, 'test_data');
+  const dbDir = path.join(os.tmpdir(), `mempalace_parity_test_${Math.random().toString(36).substring(7)}`);
   const vectorDbPath = path.join(dbDir, 'parity_vector');
   const sqlitePath = path.join(dbDir, 'parity_kg.db');
   

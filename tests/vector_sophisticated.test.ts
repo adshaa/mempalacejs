@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as os from 'os';
 
 describe('VectorStorage Sophisticated', () => {
-  const dbDir = path.join(os.tmpdir(), '.test_lancedb_sophisticated');
+  const dbDir = path.join(os.tmpdir(), `.test_lancedb_sophisticated_${Math.random().toString(36).substring(7)}`);
   let storage: VectorStorage;
 
   async function seedStorage(s: VectorStorage) {

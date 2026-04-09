@@ -56,6 +56,7 @@ program
     await storage.setup();
     console.log(`\nSuccess! Models are ready. (Took ${((Date.now() - start) / 1000).toFixed(1)}s)`);
     await storage.close();
+    await VectorStorage.shutdown();
   });
 
 program
@@ -83,6 +84,7 @@ program
       });
       
       await storage.close();
+      await VectorStorage.shutdown();
     } catch (e) {
       console.error('Error during search:', e);
     }
@@ -121,6 +123,7 @@ program
     }
 
     await storage.close();
+    await VectorStorage.shutdown();
   });
 
 program
@@ -138,6 +141,7 @@ program
     }
 
     await storage.close();
+    await VectorStorage.shutdown();
   });
 
 program
@@ -151,6 +155,7 @@ program
     const text = await stack.wakeUp(options.wing);
     console.log(text);
     await storage.close();
+    await VectorStorage.shutdown();
   });
 
 program
@@ -166,6 +171,7 @@ program
     const text = await stack.recall(options.wing, options.room, parseInt(options.limit));
     console.log(text);
     await storage.close();
+    await VectorStorage.shutdown();
   });
 
 program
@@ -224,4 +230,13 @@ program
     await runMcpServer();
   });
 
-program.parse(process.argv);
+async function main() {
+  try {
+    await program.parseAsync(process.argv);
+  } catch (e: any) {
+    console.error(`\n💥 Fatal Error: ${e.message}`);
+    process.exit(1);
+  }
+}
+
+main();

@@ -3,8 +3,10 @@ import { VectorStorage } from '../src/storage/vector';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import * as os from 'os';
+
 describe('VectorStorage', () => {
-  const dbDir = path.join(__dirname, '.test_lancedb');
+  const dbDir = path.join(os.tmpdir(), `.test_lancedb_${Math.random().toString(36).substring(7)}`);
   let storage: VectorStorage;
 
   beforeEach(async () => {

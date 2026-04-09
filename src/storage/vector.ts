@@ -7,10 +7,16 @@ import { Drawer } from '../core/types';
 export class VectorStorage {
   private dbPath: string;
   private tableName: string;
+  
+  // Singleton worker and requests map
+  private static globalWorker: Worker | null = null;
+  private static workerPromise: Promise<Worker> | null = null;
+  private static pendingRequests: Map<string, { resolve: (val: number[][]) => void, reject: (err: Error) => void }> = new Map();
+  private static requestIdCounter = 0;
+
   private db: lancedb.Connection | null = null;
-  private worker: Worker | null = null;
-  private pendingRequests: Map<string, { resolve: (val: number[][]) => void, reject: (err: Error) => void }> = new Map();
-  private requestIdCounter = 0;
+  private table: lancedb.Table | null = null;
+  private tablePromise: Promise<lancedb.Table> | null = null;
   
   private coalescingQueue: { text: string, resolve: (val: number[]) => void, reject: (err: Error) => void }[] = [];
   private coalesceTimeout: NodeJS.Timeout | null = null;
@@ -22,87 +28,122 @@ export class VectorStorage {
 
   public async init() {
     if (!this.db) {
-      this.db = await lancedb.connect(this.dbPath);
+      try {
+        this.db = await lancedb.connect(this.dbPath);
+      } catch (e: any) {
+        console.error(`❌ Failed to connect to LanceDB at ${this.dbPath}: ${e.message}`);
+        throw e;
+      }
     }
+  }
+
+  private async getTable(): Promise<lancedb.Table> {
+    if (!this.db) await this.init();
+    if (this.table) return this.table;
+    if (this.tablePromise) return this.tablePromise;
+
+    this.tablePromise = (async () => {
+      try {
+        const tableNames = await this.db!.tableNames();
+        if (!tableNames.includes(this.tableName)) {
+          throw new Error(`Table ${this.tableName} does not exist.`);
+        }
+        const table = await this.db!.openTable(this.tableName);
+        this.table = table;
+        return table;
+      } catch (e) {
+        this.tablePromise = null; // Allow retry
+        throw e;
+      }
+    })();
+
+    return this.tablePromise;
   }
 
   public async setup(): Promise<void> {
-    this.ensureWorker();
+    const worker = await this.ensureWorker();
     const id = `setup_${Date.now()}`;
     return new Promise((resolve, reject) => {
-      this.pendingRequests.set(id, { resolve: () => resolve(), reject });
-      this.worker!.postMessage({ id, type: 'SETUP' });
+      VectorStorage.pendingRequests.set(id, { resolve: () => resolve(), reject });
+      worker.postMessage({ id, type: 'SETUP' });
     });
   }
 
-  private ensureWorker() {
-    if (!this.worker) {
-      this.initWorker();
-    }
-  }
+  private async ensureWorker(): Promise<Worker> {
+    if (VectorStorage.globalWorker) return VectorStorage.globalWorker;
+    if (VectorStorage.workerPromise) return VectorStorage.workerPromise;
 
-  private initWorker() {
-    // Robust worker path resolution for production (bundled) and development
-    // 1. Check same dir (for bundled dist/storage/index.js)
-    // 2. Check storage/ dir (for bundled dist/index.js)
-    // 3. Check ../storage dir (for bundled dist/cli/index.js)
-    // 4. Check src/storage dir (for development)
-    
-    let baseDir = __dirname;
-    
-    const possiblePaths = [
-      path.join(baseDir, 'embedding_worker.js'),
-      path.join(baseDir, 'embedding_worker.mjs'),
-      path.join(baseDir, 'storage', 'embedding_worker.js'),
-      path.join(baseDir, 'storage', 'embedding_worker.mjs'),
-      path.join(baseDir, '..', 'storage', 'embedding_worker.js'),
-      path.join(baseDir, '..', 'storage', 'embedding_worker.mjs'),
-      path.join(baseDir, 'embedding_worker.ts'),
-    ];
-    
-    const workerPath = possiblePaths.find(p => fs.existsSync(p));
+    VectorStorage.workerPromise = (async () => {
+      let baseDir = __dirname;
+      const possiblePaths = [
+        path.join(baseDir, 'embedding_worker.js'),
+        path.join(baseDir, 'embedding_worker.mjs'),
+        path.join(baseDir, 'storage', 'embedding_worker.js'),
+        path.join(baseDir, 'storage', 'embedding_worker.mjs'),
+        path.join(baseDir, '..', 'storage', 'embedding_worker.js'),
+        path.join(baseDir, '..', 'storage', 'embedding_worker.mjs'),
+        path.join(baseDir, 'embedding_worker.ts'),
+      ];
+      
+      const workerPath = possiblePaths.find(p => fs.existsSync(p));
+      if (!workerPath) throw new Error(`Could not locate embedding_worker.js`);
 
-    if (!workerPath) {
-      throw new Error(`Could not locate embedding_worker.js in any of: ${possiblePaths.join(', ')}`);
-    }
-
-    try {
       const isTs = workerPath.endsWith('.ts');
-      this.worker = new Worker(workerPath, {
+      const worker = new Worker(workerPath, {
         execArgv: isTs ? ['-r', 'ts-node/register'] : []
       });
 
-      this.worker.on('message', (msg) => {
+      worker.on('message', (msg) => {
         const { id, embeddings, error, status } = msg;
-        const pending = this.pendingRequests.get(id);
+        const pending = VectorStorage.pendingRequests.get(id);
         if (pending) {
-          if (error) pending.reject(new Error(error));
-          else if (status === 'ready') pending.resolve([]);
-          else pending.resolve(embeddings);
-          this.pendingRequests.delete(id);
+          if (error) {
+            pending.reject(new Error(error));
+          } else if (status === 'ready') {
+            pending.resolve([]);
+          } else if (embeddings) {
+            pending.resolve(embeddings);
+          } else {
+            pending.reject(new Error(`Worker sent message with no embeddings or error for request ${id}`));
+          }
+          VectorStorage.pendingRequests.delete(id);
         }
       });
 
-      this.worker.on('error', (err) => {
+      worker.on('error', (err) => {
         const error = err instanceof Error ? err : new Error(String(err));
         console.error('Embedding worker error:', error);
-        for (const pending of this.pendingRequests.values()) {
+        for (const pending of VectorStorage.pendingRequests.values()) {
           pending.reject(error);
         }
-        this.pendingRequests.clear();
-        this.worker = null;
+        VectorStorage.pendingRequests.clear();
+        VectorStorage.globalWorker = null;
+        VectorStorage.workerPromise = null;
       });
-    } catch (e) {
-      console.error('Failed to initialize embedding worker', e);
-      throw e;
-    }
+
+      VectorStorage.globalWorker = worker;
+      return worker;
+    })();
+
+    return VectorStorage.workerPromise;
+  }
+
+  public async getEmbeddings(texts: string[]): Promise<number[][]> {
+    if (texts.length === 0) return [];
+    const worker = await this.ensureWorker();
+    const id = `req_${Date.now()}_${VectorStorage.requestIdCounter++}`;
+    
+    return new Promise((resolve, reject) => {
+      VectorStorage.pendingRequests.set(id, { resolve, reject });
+      worker.postMessage({ id, texts });
+    });
   }
 
   public async getEmbedding(text: string): Promise<number[]> {
     return new Promise((resolve, reject) => {
       this.coalescingQueue.push({ text, resolve, reject });
       if (!this.coalesceTimeout) {
-        this.coalesceTimeout = setTimeout(() => this.processCoalescedQueue(), 10); // 10ms batching window
+        this.coalesceTimeout = setTimeout(() => this.processCoalescedQueue(), 10);
       }
     });
   }
@@ -116,7 +157,7 @@ export class VectorStorage {
     try {
       const embeddings = await this.getEmbeddings(batch.map(b => b.text));
       if (!embeddings || embeddings.length !== batch.length) {
-        throw new Error(`Worker returned ${embeddings?.length} embeddings for ${batch.length} texts`);
+        throw new Error(`Worker returned ${embeddings?.length} embeddings but expected ${batch.length}`);
       }
       for (let i = 0; i < batch.length; i++) {
         batch[i].resolve(embeddings[i]);
@@ -128,34 +169,32 @@ export class VectorStorage {
     }
   }
 
-  public async getEmbeddings(texts: string[]): Promise<number[][]> {
-    this.ensureWorker();
-    
-    const id = `req_${Date.now()}_${this.requestIdCounter++}`;
-    return new Promise((resolve, reject) => {
-      this.pendingRequests.set(id, { resolve, reject });
-      this.worker!.postMessage({ id, texts });
-    });
-  }
-
   public async upsertDrawer(drawer: Drawer): Promise<void> {
     await this.upsertDrawers([drawer]);
   }
 
   public async upsertDrawers(drawers: Drawer[]): Promise<void> {
+    if (drawers.length === 0) return;
     if (!this.db) await this.init();
     
     const needsEmbedding = drawers.filter(d => !d.vector);
     if (needsEmbedding.length > 0) {
       const texts = needsEmbedding.map(d => d.content);
-      const embeddings = await this.getEmbeddings(texts);
-      for (let i = 0; i < needsEmbedding.length; i++) {
-        needsEmbedding[i].vector = embeddings[i];
+      try {
+        const embeddings = await this.getEmbeddings(texts);
+        if (!embeddings || embeddings.length !== needsEmbedding.length) {
+          throw new Error(`Failed to get embeddings: expected ${needsEmbedding.length}, got ${embeddings?.length}`);
+        }
+        for (let i = 0; i < needsEmbedding.length; i++) {
+          needsEmbedding[i].vector = embeddings[i];
+        }
+      } catch (e: any) {
+        console.error(`❌ Embedding generation failed: ${e.message}`);
+        throw e;
       }
     }
 
     try {
-      const tableNames = await this.db!.tableNames();
       const records = drawers.map(drawer => ({
         id: drawer.id,
         vector: drawer.vector,
@@ -163,6 +202,7 @@ export class VectorStorage {
         wing: drawer.wing,
         room: drawer.room,
         sourceFile: drawer.sourceFile,
+        sourceMtime: drawer.sourceMtime || 0,
         chunkIndex: drawer.chunkIndex,
         addedBy: drawer.addedBy,
         filedAt: drawer.filedAt,
@@ -173,14 +213,36 @@ export class VectorStorage {
         date: drawer.date || ''
       }));
 
+      const tableNames = await this.db!.tableNames();
       if (!tableNames.includes(this.tableName)) {
-        await this.db!.createTable(this.tableName, records);
+        try {
+          this.table = await this.db!.createTable(this.tableName, records);
+          this.tablePromise = Promise.resolve(this.table);
+        } catch (e: any) {
+          if (e.message?.includes('already exists')) {
+             const table = await this.getTable();
+             await table.add(records);
+          } else throw e;
+        }
       } else {
-        const table = await this.db!.openTable(this.tableName);
-        await table.add(records);
+        const table = await this.getTable();
+        try {
+          await table.add(records);
+        } catch (e: any) {
+          if (e.message?.includes('sourceMtime')) {
+            console.warn(`\n⚠️  Schema mismatch in palace. Upgrading storage...`);
+            this.table = null;
+            this.tablePromise = null;
+            await this.db!.dropTable(this.tableName);
+            this.table = await this.db!.createTable(this.tableName, records);
+            this.tablePromise = Promise.resolve(this.table);
+          } else {
+            throw e;
+          }
+        }
       }
-    } catch (e) {
-      console.error(`Failed to upsert drawers`, e);
+    } catch (e: any) {
+      console.error(`❌ Database upsert failed: ${e.message}`);
       throw e;
     }
   }
@@ -191,45 +253,34 @@ export class VectorStorage {
     filter?: { wing?: string, room?: string }
   ): Promise<(Drawer & { similarity: number })[]> {
     if (!this.db) await this.init();
-    const table = await this.db!.openTable(this.tableName);
+    const tableNames = await this.db!.tableNames();
+    if (!tableNames.includes(this.tableName)) return [];
+
+    const table = await this.getTable();
     const queryVector = await this.getEmbedding(query);
-    
     let searchBuilder = table.search(queryVector).limit(limit);
     
-    let whereClauses: string[] = [];
-    if (filter?.wing) whereClauses.push(`wing = '${filter.wing}'`);
-    if (filter?.room) whereClauses.push(`room = '${filter.room}'`);
-
-    if (whereClauses.length > 0) {
-      searchBuilder = searchBuilder.where(whereClauses.join(' AND '));
-    }
+    if (filter?.wing) searchBuilder = searchBuilder.where(`wing = '${filter.wing.replace(/'/g, "''")}'`);
+    if (filter?.room) searchBuilder = searchBuilder.where(`room = '${filter.room.replace(/'/g, "''")}'`);
     
     const results = await searchBuilder.toArray();
-
     return results.map(r => {
-      // LanceDB returns '_distance'. Assuming L2 distance and normalized vectors:
-      // cosine_sim = 1 - (L2^2 / 2)
       const dist = (r as any)._distance || 0;
       const similarity = 1 - (dist * dist) / 2;
-      return {
-        ...r,
-        similarity: parseFloat(similarity.toFixed(3))
-      } as Drawer & { similarity: number };
+      return { ...r, similarity: parseFloat(similarity.toFixed(3)) } as Drawer & { similarity: number };
     });
   }
 
   public async getTaxonomy(): Promise<{ wings: Record<string, number>, rooms: Record<string, number>, total: number }> {
     if (!this.db) await this.init();
-    if (!(await this.hasTable())) {
-      return { wings: {}, rooms: {}, total: 0 };
-    }
+    const tableNames = await this.db!.tableNames();
+    if (!tableNames.includes(this.tableName)) return { wings: {}, rooms: {}, total: 0 };
 
-    const table = await this.db!.openTable(this.tableName);
+    const table = await this.getTable();
     const rows = await table.query().select(['wing', 'room']).toArray();
     
     const wings: Record<string, number> = {};
     const rooms: Record<string, number> = {};
-    
     for (const row of rows) {
       const w = (row.wing as string) || 'unknown';
       const r = (row.room as string) || 'unknown';
@@ -246,8 +297,11 @@ export class VectorStorage {
   }
 
   public async getAllMetadata(columns: string[]): Promise<Record<string, unknown>[]> {
-    if (!(await this.hasTable())) return [];
-    const table = await this.db!.openTable(this.tableName);
+    if (!this.db) await this.init();
+    const tableNames = await this.db!.tableNames();
+    if (!tableNames.includes(this.tableName)) return [];
+
+    const table = await this.getTable();
     return await table.query().select(columns).toArray();
   }
 
@@ -256,18 +310,13 @@ export class VectorStorage {
     filter?: { wing?: string, room?: string }
   ): Promise<Drawer[]> {
     if (!this.db) await this.init();
-    if (!(await this.hasTable())) return [];
-    const table = await this.db!.openTable(this.tableName);
-    
-    let query = table.query();
-    
-    let whereClauses: string[] = [];
-    if (filter?.wing) whereClauses.push(`wing = '${filter.wing}'`);
-    if (filter?.room) whereClauses.push(`room = '${filter.room}'`);
+    const tableNames = await this.db!.tableNames();
+    if (!tableNames.includes(this.tableName)) return [];
 
-    if (whereClauses.length > 0) {
-      query = query.where(whereClauses.join(' AND '));
-    }
+    const table = await this.getTable();
+    let query = table.query();
+    if (filter?.wing) query = query.where(`wing = '${filter.wing.replace(/'/g, "''")}'`);
+    if (filter?.room) query = query.where(`room = '${filter.room.replace(/'/g, "''")}'`);
     
     const results = await query.limit(limit).toArray();
     return results as any[];
@@ -277,15 +326,60 @@ export class VectorStorage {
     if (!this.db) await this.init();
     const tableNames = await this.db!.tableNames();
     if (tableNames.includes(this.tableName)) {
+      this.table = null;
+      this.tablePromise = null;
       await this.db!.dropTable(this.tableName);
     }
   }
 
   public async deleteDrawer(id: string): Promise<void> {
     if (!this.db) await this.init();
-    if (!(await this.hasTable())) return;
-    const table = await this.db!.openTable(this.tableName);
-    await table.delete(`id = '${id}'`);
+    const tableNames = await this.db!.tableNames();
+    if (!tableNames.includes(this.tableName)) return;
+
+    const table = await this.getTable();
+    await table.delete(`id = '${id.replace(/'/g, "''")}'`);
+  }
+
+  public async getFileMtime(sourceFile: string): Promise<number | null> {
+    if (!this.db) await this.init();
+    const tableNames = await this.db!.tableNames();
+    if (!tableNames.includes(this.tableName)) return null;
+
+    const table = await this.getTable();
+    try {
+      const results = await table.query()
+        .where(`sourceFile = '${sourceFile.replace(/'/g, "''")}'`)
+        .limit(1).select(['sourceMtime']).toArray();
+      if (results.length > 0) return (results[0] as any).sourceMtime || null;
+    } catch (e: any) {
+      if (e.message?.includes('sourceMtime')) return null;
+      throw e;
+    }
+    return null;
+  }
+
+  public async getMtimeMap(wing?: string): Promise<Map<string, number>> {
+    if (!this.db) await this.init();
+    const tableNames = await this.db!.tableNames();
+    if (!tableNames.includes(this.tableName)) return new Map();
+
+    const table = await this.getTable();
+    try {
+      let query = table.query().select(['sourceFile', 'sourceMtime']);
+      if (wing) query = query.where(`wing = '${wing.replace(/'/g, "''")}'`);
+      const results = await query.toArray();
+      const map = new Map<string, number>();
+      for (const row of results) {
+        const file = (row as any).sourceFile;
+        const mtime = (row as any).sourceMtime;
+        if (file && mtime !== undefined) map.set(file, mtime);
+      }
+      return map;
+    } catch (e: any) {
+      if (e.message?.includes('sourceMtime')) return new Map();
+      throw e;
+    }
   }
 
   public async close() {
@@ -293,9 +387,13 @@ export class VectorStorage {
       clearTimeout(this.coalesceTimeout);
       this.coalesceTimeout = null;
     }
-    if (this.worker) {
-      await this.worker.terminate();
-      this.worker = null;
+  }
+
+  public static async shutdown() {
+    if (VectorStorage.globalWorker) {
+      await VectorStorage.globalWorker.terminate();
+      VectorStorage.globalWorker = null;
+      VectorStorage.workerPromise = null;
     }
   }
 }
