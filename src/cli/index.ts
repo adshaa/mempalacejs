@@ -46,6 +46,19 @@ program
   });
 
 program
+  .command('setup')
+  .description('Pre-download local AI models for faster first run')
+  .action(async () => {
+    console.log("Preparing MemPalace...");
+    console.log("Downloading/Checking 'all-MiniLM-L6-v2' (Full Weights, ~90MB)...");
+    const { storage } = await getStorage();
+    const start = Date.now();
+    await storage.setup();
+    console.log(`\nSuccess! Models are ready. (Took ${((Date.now() - start) / 1000).toFixed(1)}s)`);
+    await storage.close();
+  });
+
+program
   .command('search')
   .description('Search the palace')
   .argument('<query>', 'The text to search for')

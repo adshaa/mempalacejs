@@ -12,14 +12,23 @@ async function getExtractor() {
 
 interface EmbeddingRequest {
   id: string;
-  texts: string[];
+  texts?: string[];
+  type?: 'SETUP';
 }
 
 if (parentPort) {
   parentPort.on('message', async (message: EmbeddingRequest) => {
-    const { id, texts } = message;
+    const { id, texts, type } = message;
     try {
       const pipeline = await getExtractor();
+      
+      if (type === 'SETUP') {
+        parentPort?.postMessage({ id, status: 'ready' });
+        return;
+      }
+
+      if (!texts) return;
+
       const output = await pipeline(texts, { pooling: 'mean', normalize: true });
       
       // If single text, output.data is a single array. 

@@ -24,6 +24,18 @@ export class VectorStorage {
     if (!this.db) {
       this.db = await lancedb.connect(this.dbPath);
     }
+  }
+
+  public async setup(): Promise<void> {
+    this.ensureWorker();
+    const id = `setup_${Date.now()}`;
+    return new Promise((resolve, reject) => {
+      this.pendingRequests.set(id, { resolve: () => resolve(), reject });
+      this.worker!.postMessage({ id, type: 'SETUP' });
+    });
+  }
+
+  private ensureWorker() {
     if (!this.worker) {
       this.initWorker();
     }
@@ -61,10 +73,11 @@ export class VectorStorage {
       });
 
       this.worker.on('message', (msg) => {
-        const { id, embeddings, error } = msg;
+        const { id, embeddings, error, status } = msg;
         const pending = this.pendingRequests.get(id);
         if (pending) {
           if (error) pending.reject(new Error(error));
+          else if (status === 'ready') pending.resolve([]);
           else pending.resolve(embeddings);
           this.pendingRequests.delete(id);
         }
@@ -116,7 +129,7 @@ export class VectorStorage {
   }
 
   public async getEmbeddings(texts: string[]): Promise<number[][]> {
-    if (!this.worker) this.initWorker();
+    this.ensureWorker();
     
     const id = `req_${Date.now()}_${this.requestIdCounter++}`;
     return new Promise((resolve, reject) => {
