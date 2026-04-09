@@ -1,12 +1,12 @@
 {
   "name": "mempalacejs",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Local-first AI memory system and MCP server",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "bin": {
-    "mempalace": "./dist/cli/index.js"
+    "mempalace": "dist/cli/index.js"
   },
   "exports": {
     ".": {
@@ -53,8 +53,7 @@
     "hooks",
     "docs",
     "README.md",
-    "DIALECT.md",
-    "LICENSE"
+    "DIALECT.md"
   ],
   "dependencies": {
     "@lancedb/lancedb": "^0.27.2",

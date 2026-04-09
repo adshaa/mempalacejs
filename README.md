@@ -3,19 +3,16 @@
 [![NPM Version](https://img.shields.io/npm/v/mempalacejs.svg)](https://www.npmjs.com/package/mempalacejs)
 [![License](https://img.shields.io/npm/l/mempalacejs.svg)](https://github.com/adshaa/mempalacejs/blob/dev/LICENSE)
 ![TypeScript](https://img.shields.io/badge/language-TypeScript-blue)
-![Recall Accuracy](https://img.shields.io/badge/Recall@5-96.4%25-blue)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/adshaa/mempalacejs/pulls)
+![Recall Accuracy](https://img.shields.io/badge/Recall@5-96.4%25-brightgreen)
+![Node Version](https://img.shields.io/node/v/mempalacejs)
 
-![Ingestion Speed](https://img.shields.io/badge/Ingestion-28.3%20dr%2Fs-blue)
-![Startup Latency](https://img.shields.io/badge/Startup-%3C150ms-success)
-![Fluidity](https://img.shields.io/badge/UI_Fluidity-90.1%25-brightgreen)
-![Search Latency](https://img.shields.io/badge/Search-Sub--10ms-blueviolet)
+Give your AI a perfect, infinite memory. A local-first, zero-LLM memory system and Model Context Protocol (MCP) server designed to give AI assistants (like Claude, ChatGPT, and custom agents) a searchable, structured "Memory Palace."
 
 Give your AI a perfect, infinite memory. A local-first, zero-LLM memory system and Model Context Protocol (MCP) server designed to give AI assistants (like Claude, ChatGPT, and custom agents) a searchable, structured "Memory Palace."
 
 This is a **native Node.js / TypeScript port** of the original Python [MemPalace](https://github.com/milla-jovovich/mempalace) architecture, achieving full feature parity and benchmark validation while running seamlessly in JS-native environments.
 
----
+***
 
 ## 🏛️ How it Works
 
@@ -42,7 +39,7 @@ MemPalace organizes information using a spatial metaphor to maximize context eff
 - **Drawers:** The actual text chunks (vectors) stored in LanceDB.
 - **Tunnels:** Cross-wing connections dynamically built when a Room appears in multiple Wings.
 
----
+***
 
 ## Why MemPalace JS? (Industrial-Grade Memory)
 
@@ -53,7 +50,7 @@ While most local RAG implementations use simple file buffers or basic SQLite ext
 *   **O(1) Context Streaming:** Our **Async Generator** retrieval treats memory like a pipeline, not a buffer. Recalling a massive "room" of context consumes minimal RAM, regardless of the dataset size.
 *   **Self-Contained Stability:** By internalizing all pure-JS dependencies, we provide a **Zero-Config bundle** that eliminates `node_modules` bloat and version conflicts with other CLI tools.
 
----
+***
 
 ## Features
 
@@ -63,7 +60,7 @@ While most local RAG implementations use simple file buffers or basic SQLite ext
 - **AAAK Dialect Compression:** High-density, LLM-readable memory storage that saves 80% on tokens while preserving context.
 - **Native MCP Server:** Seamless integration with **Claude Code** and **Claude Desktop**.
 
----
+***
 
 ## ⚡ AAAK at a glance (Lossy Memory Compression)
 
@@ -75,7 +72,7 @@ MemPalace JS automatically compresses long project histories into high-density *
 **AAAK Output:**
 > PROJ: backend | *fierce* JOR→switch DB to Postgres (joins) | ★★★★ | MIL: backend-db-switch
 
----
+***
 
 ## Documentation
 
@@ -289,7 +286,7 @@ npx tsx src/benchmarks/longmemeval_bench.ts benchmarks/data/longmemeval_s_cleane
 ### Contributing & Issues
 We welcome contributions! Please feel free to open an issue or submit a pull request on [GitHub](https://github.com/adshaa/mempalacejs).
 
----
+***
 
 ## License
 
