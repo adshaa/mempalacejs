@@ -78,12 +78,16 @@ npm install -g mempalacejs
 
 ### 2. Initialization
 
-Set up your personal Memory Palace (defaults to `~/.mempalace/palace`):
+Set up your personal Memory Palace (defaults to `~/.mempalace/palace`) and pre-download the required local AI models:
 
 ```bash
+# Initialize palace structure and identity
 mempalace init
+
+# Pre-download local AI models (HuggingFace weights, ~90MB)
+mempalace setup
 ```
-This runs an interactive onboarding flow to configure your initial rooms and wings.
+The `setup` command ensures that your first search or codebase mine doesn't have a 1-minute delay while downloading the embedding model.
 
 ### 3. Mining Data
 
@@ -205,6 +209,9 @@ The `mempalacejs` architecture is designed to leverage Node.js's strengths in as
 
 *   **Atomic SQLite Transaction Batching:**
     Ingestion for the Knowledge Graph utilizes `better-sqlite3`'s native atomic transactions, enabling high-throughput data mining (~23,800 triples/sec) while ensuring strict data integrity.
+
+*   **Self-Contained & Lazy-Loaded:**
+    To ensure the snappiest CLI experience, MemPalace bundles all pure-JS dependencies into a single distribution and implements **true lazy-loading** for heavy math libraries. The `Transformers.js` engine is only initialized when a command specifically requires semantic math, allowing status and navigation commands to start in **<150ms**.
 
 ## Performance Delta & Optimization Results
 
