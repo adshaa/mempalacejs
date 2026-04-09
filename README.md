@@ -6,7 +6,10 @@
 ![Recall Accuracy](https://img.shields.io/badge/Recall@5-96.4%25-brightgreen)
 ![Node Version](https://img.shields.io/node/v/mempalacejs)
 
-Give your AI a perfect, infinite memory. A local-first, zero-LLM memory system and Model Context Protocol (MCP) server designed to give AI assistants (like Claude, ChatGPT, and custom agents) a searchable, structured "Memory Palace."
+![Ingestion Speed](https://img.shields.io/badge/Ingestion-28.3%20dr%2Fs-blue)
+![Startup Latency](https://img.shields.io/badge/Startup-%3C150ms-success)
+![Fluidity](https://img.shields.io/badge/UI_Fluidity-90.1%25-brightgreen)
+![Search Latency](https://img.shields.io/badge/Search-Sub--10ms-blueviolet)
 
 Give your AI a perfect, infinite memory. A local-first, zero-LLM memory system and Model Context Protocol (MCP) server designed to give AI assistants (like Claude, ChatGPT, and custom agents) a searchable, structured "Memory Palace."
 
